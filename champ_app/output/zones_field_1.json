@@ -1,0 +1,700 @@
+{
+  "thresholds_used": {
+    "critical": 0.35,
+    "warning": 0.55
+  },
+  "grid": {
+    "method": "grid",
+    "rows": 8,
+    "cols": 12
+  },
+  "zones": [
+    {
+      "id": "A1",
+      "ndvi": null,
+      "ndre": null,
+      "status": "no_data",
+      "valid_pixel_ratio": 0.0
+    },
+    {
+      "id": "A2",
+      "ndvi": 0.67,
+      "ndre": 0.278,
+      "status": "ok",
+      "valid_pixel_ratio": 0.846
+    },
+    {
+      "id": "A3",
+      "ndvi": 0.707,
+      "ndre": 0.296,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "A4",
+      "ndvi": 0.75,
+      "ndre": 0.315,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "A5",
+      "ndvi": 0.782,
+      "ndre": 0.331,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "A6",
+      "ndvi": 0.805,
+      "ndre": 0.341,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "A7",
+      "ndvi": 0.818,
+      "ndre": 0.347,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "A8",
+      "ndvi": 0.806,
+      "ndre": 0.343,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "A9",
+      "ndvi": 0.792,
+      "ndre": 0.335,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "A10",
+      "ndvi": 0.762,
+      "ndre": 0.321,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "A11",
+      "ndvi": 0.727,
+      "ndre": 0.304,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "A12",
+      "ndvi": 0.685,
+      "ndre": 0.284,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "B1",
+      "ndvi": 0.642,
+      "ndre": 0.266,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "B2",
+      "ndvi": 0.683,
+      "ndre": 0.286,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "B3",
+      "ndvi": 0.725,
+      "ndre": 0.307,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "B4",
+      "ndvi": 0.773,
+      "ndre": 0.329,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "B5",
+      "ndvi": 0.815,
+      "ndre": 0.347,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "B6",
+      "ndvi": 0.849,
+      "ndre": 0.362,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "B7",
+      "ndvi": 0.86,
+      "ndre": 0.367,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "B8",
+      "ndvi": 0.856,
+      "ndre": 0.365,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "B9",
+      "ndvi": 0.838,
+      "ndre": 0.355,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "B10",
+      "ndvi": 0.798,
+      "ndre": 0.338,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "B11",
+      "ndvi": 0.757,
+      "ndre": 0.318,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "B12",
+      "ndvi": 0.712,
+      "ndre": 0.297,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "C1",
+      "ndvi": 0.623,
+      "ndre": 0.263,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "C2",
+      "ndvi": 0.656,
+      "ndre": 0.281,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "C3",
+      "ndvi": 0.705,
+      "ndre": 0.306,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "C4",
+      "ndvi": 0.765,
+      "ndre": 0.332,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "C5",
+      "ndvi": 0.822,
+      "ndre": 0.355,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "C6",
+      "ndvi": 0.868,
+      "ndre": 0.372,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "C7",
+      "ndvi": 0.884,
+      "ndre": 0.378,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "C8",
+      "ndvi": 0.88,
+      "ndre": 0.376,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "C9",
+      "ndvi": 0.859,
+      "ndre": 0.366,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "C10",
+      "ndvi": 0.822,
+      "ndre": 0.349,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "C11",
+      "ndvi": 0.775,
+      "ndre": 0.327,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "C12",
+      "ndvi": 0.729,
+      "ndre": 0.304,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "D1",
+      "ndvi": 0.551,
+      "ndre": 0.242,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "D2",
+      "ndvi": 0.572,
+      "ndre": 0.258,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "D3",
+      "ndvi": 0.63,
+      "ndre": 0.286,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "D4",
+      "ndvi": 0.71,
+      "ndre": 0.319,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "D5",
+      "ndvi": 0.785,
+      "ndre": 0.347,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "D6",
+      "ndvi": 0.849,
+      "ndre": 0.369,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "D7",
+      "ndvi": 0.888,
+      "ndre": 0.381,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "D8",
+      "ndvi": 0.886,
+      "ndre": 0.379,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "D9",
+      "ndvi": 0.867,
+      "ndre": 0.369,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "D10",
+      "ndvi": 0.827,
+      "ndre": 0.351,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "D11",
+      "ndvi": 0.781,
+      "ndre": 0.33,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "D12",
+      "ndvi": 0.73,
+      "ndre": 0.305,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "E1",
+      "ndvi": 0.442,
+      "ndre": 0.206,
+      "status": "warning",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "E2",
+      "ndvi": 0.439,
+      "ndre": 0.214,
+      "status": "warning",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "E3",
+      "ndvi": 0.493,
+      "ndre": 0.243,
+      "status": "warning",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "E4",
+      "ndvi": 0.598,
+      "ndre": 0.285,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "E5",
+      "ndvi": 0.706,
+      "ndre": 0.323,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "E6",
+      "ndvi": 0.803,
+      "ndre": 0.354,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "E7",
+      "ndvi": 0.851,
+      "ndre": 0.368,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "E8",
+      "ndvi": 0.861,
+      "ndre": 0.369,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "E9",
+      "ndvi": 0.846,
+      "ndre": 0.361,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "E10",
+      "ndvi": 0.812,
+      "ndre": 0.344,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "E11",
+      "ndvi": 0.768,
+      "ndre": 0.323,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "E12",
+      "ndvi": 0.716,
+      "ndre": 0.3,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "F1",
+      "ndvi": 0.33,
+      "ndre": 0.164,
+      "status": "critical",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "F2",
+      "ndvi": 0.298,
+      "ndre": 0.161,
+      "status": "critical",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "F3",
+      "ndvi": 0.352,
+      "ndre": 0.19,
+      "status": "warning",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "F4",
+      "ndvi": 0.473,
+      "ndre": 0.241,
+      "status": "warning",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "F5",
+      "ndvi": 0.614,
+      "ndre": 0.291,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "F6",
+      "ndvi": 0.73,
+      "ndre": 0.328,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "F7",
+      "ndvi": 0.798,
+      "ndre": 0.347,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "F8",
+      "ndvi": 0.823,
+      "ndre": 0.352,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "F9",
+      "ndvi": 0.811,
+      "ndre": 0.344,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "F10",
+      "ndvi": 0.781,
+      "ndre": 0.33,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "F11",
+      "ndvi": 0.743,
+      "ndre": 0.312,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "F12",
+      "ndvi": 0.698,
+      "ndre": 0.29,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "G1",
+      "ndvi": 0.267,
+      "ndre": 0.136,
+      "status": "critical",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "G2",
+      "ndvi": 0.226,
+      "ndre": 0.128,
+      "status": "critical",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "G3",
+      "ndvi": 0.272,
+      "ndre": 0.154,
+      "status": "critical",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "G4",
+      "ndvi": 0.399,
+      "ndre": 0.207,
+      "status": "warning",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "G5",
+      "ndvi": 0.546,
+      "ndre": 0.261,
+      "status": "warning",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "G6",
+      "ndvi": 0.668,
+      "ndre": 0.3,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "G7",
+      "ndvi": 0.743,
+      "ndre": 0.322,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "G8",
+      "ndvi": 0.769,
+      "ndre": 0.328,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "G9",
+      "ndvi": 0.764,
+      "ndre": 0.322,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "G10",
+      "ndvi": 0.738,
+      "ndre": 0.31,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "G11",
+      "ndvi": 0.708,
+      "ndre": 0.295,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "G12",
+      "ndvi": 0.672,
+      "ndre": 0.278,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "H1",
+      "ndvi": 0.298,
+      "ndre": 0.144,
+      "status": "critical",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "H2",
+      "ndvi": 0.262,
+      "ndre": 0.135,
+      "status": "critical",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "H3",
+      "ndvi": 0.298,
+      "ndre": 0.155,
+      "status": "critical",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "H4",
+      "ndvi": 0.402,
+      "ndre": 0.198,
+      "status": "warning",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "H5",
+      "ndvi": 0.526,
+      "ndre": 0.243,
+      "status": "warning",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "H6",
+      "ndvi": 0.634,
+      "ndre": 0.279,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "H7",
+      "ndvi": 0.694,
+      "ndre": 0.296,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "H8",
+      "ndvi": 0.718,
+      "ndre": 0.302,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "H9",
+      "ndvi": 0.713,
+      "ndre": 0.298,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "H10",
+      "ndvi": 0.695,
+      "ndre": 0.288,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "H11",
+      "ndvi": 0.667,
+      "ndre": 0.276,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    },
+    {
+      "id": "H12",
+      "ndvi": 0.648,
+      "ndre": 0.265,
+      "status": "ok",
+      "valid_pixel_ratio": 1.0
+    }
+  ],
+  "alert_count": 8,
+  "alert_zone_ids": [
+    "F1",
+    "F2",
+    "G1",
+    "G2",
+    "G3",
+    "H1",
+    "H2",
+    "H3"
+  ],
+  "field_mean_ndvi": 0.687,
+  "label_grid": null,
+  "field_id": 1,
+  "field_name": "Parcelle Nord"
+}

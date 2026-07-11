@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Onboarding — prototype</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<meta name="theme-color" content="#1C1710">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+<style>
+  :root{
+    --soil-dark: #1C1710;
+    --surface: #26211A;
+    --surface-raised: #2F2921;
+    --line: #3C352A;
+    --healthy: #6FA059;
+    --mid: #9FBB6C;
+    --stress: #D9A441;
+    --critical: #C4623A;
+    --parchment: #EDE6D6;
+    --sage: #9AA88B;
+    --sage-dim: #6E7A63;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  body{
+    margin:0;
+    background:#0E0C09;
+    color: var(--parchment);
+    font-family:'IBM Plex Sans', sans-serif;
+    display:flex;
+    justify-content:center;
+    padding: 16px 0;
+  }
+  .phone{
+    width:390px;
+    max-width:100%;
+    background: var(--soil-dark);
+    min-height: 720px;
+    display:flex;
+    flex-direction:column;
+    position:relative;
+    border-radius: 6px;
+    overflow:hidden;
+  }
+  .step{ display:none; flex:1; flex-direction:column; padding:24px 20px; }
+  .step.active{ display:flex; }
+
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color: var(--sage);
+    text-transform:uppercase;
+    letter-spacing:1px;
+    margin-bottom:6px;
+  }
+  h1{
+    font-family:'Big Shoulders Display', sans-serif;
+    font-weight:800;
+    font-size:26px;
+    text-transform:uppercase;
+    letter-spacing:0.3px;
+    margin: 0 0 6px 0;
+    line-height:1.05;
+  }
+  .subtext{ font-size:13px; color: var(--sage); margin-bottom:22px; line-height:1.5; }
+
+  label{
+    display:block;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color: var(--sage);
+    text-transform:uppercase;
+    letter-spacing:0.5px;
+    margin: 14px 0 6px 0;
+  }
+  input, select{
+    width:100%;
+    background: var(--surface);
+    border:1px solid var(--line);
+    color: var(--parchment);
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:14px;
+    padding:12px 14px;
+    border-radius:3px;
+  }
+  input:focus, select:focus{ outline:2px solid var(--sage-dim); }
+
+  .field-error{
+    font-size:11px;
+    color: var(--critical);
+    margin-top:5px;
+    min-height:14px;
+    font-family:'IBM Plex Mono', monospace;
+  }
+
+  .primary-btn{
+    margin-top:24px;
+    width:100%;
+    padding:15px;
+    background: var(--mid);
+    color: var(--soil-dark);
+    border:none;
+    border-radius:4px;
+    font-family:'IBM Plex Sans', sans-serif;
+    font-weight:600;
+    font-size:15px;
+  }
+  .primary-btn:active{ background: var(--healthy); }
+  .primary-btn:disabled{ background: var(--surface-raised); color: var(--sage-dim); }
+
+  .link-btn{
+    margin-top:14px;
+    background:none;
+    border:none;
+    color: var(--sage);
+    font-size:12px;
+    text-decoration:underline;
+    align-self:center;
+  }
+
+  .progress-dots{
+    display:flex;
+    gap:6px;
+    margin-bottom:20px;
+  }
+  .dot{ width:22px; height:3px; background: var(--line); border-radius:2px; }
+  .dot.done{ background: var(--mid); }
+
+  /* --- carte de dessin (step 2) --- */
+  #leaflet-map{
+    margin-top:14px;
+    width:100%;
+    height:240px;
+    border-radius:4px;
+    overflow:hidden;
+    border:1px solid var(--line);
+  }
+  .map-hint{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10px;
+    color: var(--sage);
+    margin-top:6px;
+    text-align:center;
+  }
+  .area-readout{
+    margin-top:8px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:13px;
+    color: var(--sage);
+    text-align:center;
+  }
+  .area-readout b{ color: var(--parchment); font-size:16px; }
+
+  /* --- confirmation (step 3) --- */
+  .summary-card{
+    background: var(--surface);
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:18px;
+    margin-top:8px;
+  }
+  .summary-row{
+    display:flex;
+    justify-content:space-between;
+    padding:9px 0;
+    border-bottom:1px solid var(--line);
+    font-size:13px;
+  }
+  .summary-row:last-child{ border-bottom:none; }
+  .summary-row span:first-child{ color: var(--sage); }
+  .summary-row span:last-child{ font-family:'IBM Plex Mono', monospace; }
+
+  .check-icon{
+    width:48px; height:48px;
+    border-radius:50%;
+    background: var(--healthy);
+    color: var(--soil-dark);
+    display:flex; align-items:center; justify-content:center;
+    font-size:24px;
+    margin: 4px auto 16px auto;
+  }
+
+  /* --- liste des champs --- */
+  .field-row{
+    display:block;
+    background: var(--surface);
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:14px;
+    margin: 10px 0;
+    text-decoration:none;
+    color: inherit;
+  }
+  .field-row-name{ font-family:'Big Shoulders Display', sans-serif; font-weight:600; font-size:17px; text-transform:uppercase; }
+  .field-row-meta{ font-family:'IBM Plex Mono', monospace; font-size:11px; color: var(--sage); margin-top:4px; }
+</style>
+</head>
+<body>
+<div class="phone">
+
+  <!-- STEP 0 : accueil -->
+  <div class="step active" id="step-welcome">
+    <div style="flex:1; display:flex; flex-direction:column; justify-content:center;">
+      <div class="eyebrow">Suivi de champs</div>
+      <h1>Bienvenue</h1>
+      <div class="subtext">Suivez la vigueur de vos parcelles par satellite et recevez des alertes ciblées.</div>
+      <button class="primary-btn" id="btn-goto-signup">Créer un compte</button>
+      <button class="link-btn" id="btn-goto-login">J'ai déjà un compte</button>
+    </div>
+  </div>
+
+  <!-- STEP LOGIN : connexion -->
+  <div class="step" id="step-login">
+    <div class="eyebrow">Content de vous revoir</div>
+    <h1>Se connecter</h1>
+    <div class="subtext">Retrouvez vos champs et leurs dernières données.</div>
+
+    <label for="login-email">Email</label>
+    <input type="email" id="login-email" placeholder="vous@exemple.fr">
+    <div class="field-error" id="err-login-email"></div>
+
+    <label for="login-password">Mot de passe</label>
+    <input type="password" id="login-password" placeholder="Votre mot de passe">
+    <div class="field-error" id="err-login-password"></div>
+
+    <button class="primary-btn" id="btn-login">Se connecter</button>
+    <button class="link-btn" id="btn-back-welcome-1">Retour</button>
+  </div>
+
+  <!-- STEP FIELDS : mes champs -->
+  <div class="step" id="step-fields">
+    <div class="eyebrow" id="fields-email-label">Mes champs</div>
+    <h1>Vos parcelles</h1>
+    <div id="fields-list-empty" class="subtext" style="display:none;">Vous n'avez pas encore de champ enregistré.</div>
+    <div id="fields-list"></div>
+    <button class="primary-btn" id="btn-add-field">+ Ajouter un champ</button>
+    <button class="link-btn" id="btn-logout">Se déconnecter</button>
+  </div>
+
+  <!-- STEP 1 : compte -->
+  <div class="step" id="step-1">
+    <div class="progress-dots"><div class="dot done"></div><div class="dot"></div><div class="dot"></div></div>
+    <div class="eyebrow">Bienvenue</div>
+    <h1>Créer votre compte</h1>
+    <div class="subtext">Pour suivre vos champs et recevoir des alertes personnalisées.</div>
+
+    <label for="email">Email</label>
+    <input type="email" id="email" placeholder="vous@exemple.fr">
+    <div class="field-error" id="err-email"></div>
+
+    <label for="password">Mot de passe</label>
+    <input type="password" id="password" placeholder="8 caractères minimum">
+    <div class="field-error" id="err-password"></div>
+
+    <button class="primary-btn" id="btn-signup">Créer mon compte</button>
+    <button class="link-btn" id="btn-back-welcome-2">Retour</button>
+  </div>
+
+  <!-- STEP 2 : ajout de champ -->
+  <div class="step" id="step-2">
+    <div class="progress-dots"><div class="dot done"></div><div class="dot done"></div><div class="dot"></div></div>
+    <div class="eyebrow">Premier champ</div>
+    <h1>Ajoutez votre champ</h1>
+    <div class="subtext">Dessinez le contour approximatif sur la vue aérienne ci-dessous.</div>
+
+    <label for="field-name">Nom du champ</label>
+    <input type="text" id="field-name" placeholder="Parcelle Nord">
+    <div class="field-error" id="err-name"></div>
+
+    <label for="field-crop">Culture</label>
+    <select id="field-crop">
+      <option value="">Choisir une culture</option>
+    </select>
+    <div class="field-error" id="err-crop"></div>
+
+    <label for="field-sowing">Date de semis (optionnel)</label>
+    <input type="date" id="field-sowing">
+
+    <label>Contour du champ</label>
+    <div id="leaflet-map"></div>
+    <div class="map-hint">Utilisez l'outil polygone (icône en haut à droite) pour tracer le contour exact de votre parcelle</div>
+    <div class="area-readout" id="area-readout">Surface estimée : <b>—</b></div>
+    <div class="field-error" id="err-draw"></div>
+
+    <button class="primary-btn" id="btn-save-field">Enregistrer ce champ</button>
+    <button class="link-btn" id="btn-back-1">Retour</button>
+  </div>
+
+  <!-- STEP 3 : confirmation -->
+  <div class="step" id="step-3">
+    <div class="progress-dots"><div class="dot done"></div><div class="dot done"></div><div class="dot done"></div></div>
+    <div style="text-align:center; margin-top:10px;">
+      <div class="check-icon">✓</div>
+      <h1 style="text-align:center;">Champ enregistré</h1>
+      <div class="subtext" style="text-align:center;">Le suivi satellite démarrera au prochain passage disponible.</div>
+    </div>
+
+    <div class="summary-card">
+      <div class="summary-row"><span>Nom</span><span id="s-name">—</span></div>
+      <div class="summary-row"><span>Culture</span><span id="s-crop">—</span></div>
+      <div class="summary-row"><span>Surface estimée</span><span id="s-area">—</span></div>
+      <div class="summary-row"><span>Compte</span><span id="s-email">—</span></div>
+    </div>
+
+    <button class="primary-btn" id="btn-goto-dashboard">Voir mes champs</button>
+  </div>
+
+</div>
+
+<script>
+const state = { email:'', name:'', crop:'', areaHa:0, polygon:null, userId:null, token:null, apiOnline:false };
+
+// URL de l'API — à adapter si le serveur tourne ailleurs qu'en local.
+// Lancer le serveur : uvicorn src.api:app --reload --port 8000
+// En dev local (fichier ouvert directement, file://), on parle à l'API sur
+// localhost:8000. Une fois déployé et servi par le même serveur FastAPI que
+// l'API (voir README), le front et le back partagent le même domaine : pas
+// besoin d'URL absolue, une chaîne vide + chemin relatif suffit.
+const API_BASE = location.protocol === 'file:' ? 'http://localhost:8000' : '';
+
+// ---- persistance de session (localStorage) ----
+// ⚠️ localStorage peut être bloqué dans certains contextes d'aperçu iframe
+// (ex : prévisualisation de fichier dans une interface de chat). Le code
+// dégrade silencieusement vers une session en mémoire uniquement (perdue au
+// rechargement) si localStorage n'est pas accessible — ouvrir ce fichier
+// directement dans un navigateur normal active la vraie persistance.
+const SESSION_KEY = 'champ_app_session';
+
+function saveSession(){
+  try{
+    localStorage.setItem(SESSION_KEY, JSON.stringify({ token: state.token, userId: state.userId, email: state.email }));
+  } catch(err){
+    console.warn('localStorage indisponible, session non persistée entre rechargements :', err.message);
+  }
+}
+
+function loadSession(){
+  try{
+    const raw = localStorage.getItem(SESSION_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch(err){
+    return null;
+  }
+}
+
+function clearSession(){
+  try{ localStorage.removeItem(SESSION_KEY); } catch(err){ /* rien à faire */ }
+}
+
+async function apiCall(path, options){
+  const headers = { 'Content-Type': 'application/json', ...(options?.headers||{}) };
+  if(state.token){ headers['Authorization'] = 'Bearer ' + state.token; }
+  const res = await fetch(API_BASE + path, { ...options, headers });
+  const data = await res.json();
+  if(!res.ok){
+    // FastAPI renvoie soit {detail:"message"} soit un tableau d'erreurs Pydantic (422)
+    const msg = Array.isArray(data.detail) ? data.detail[0].msg : data.detail;
+    throw new Error(msg || 'Erreur serveur.');
+  }
+  return data;
+}
+
+function showStep(n){
+  document.querySelectorAll('.step').forEach(s=>s.classList.remove('active'));
+  document.getElementById('step-' + n).classList.add('active');
+}
+
+// ---- navigation accueil / inscription / connexion ----
+document.getElementById('btn-goto-signup').addEventListener('click', ()=> showStep('1'));
+document.getElementById('btn-goto-login').addEventListener('click', ()=> showStep('login'));
+document.getElementById('btn-back-welcome-1').addEventListener('click', ()=> showStep('welcome'));
+document.getElementById('btn-back-welcome-2').addEventListener('click', ()=> showStep('welcome'));
+
+// ---- charge dynamiquement la liste des cultures depuis GET /crops
+// (repli sur une liste locale si l'API n'est pas joignable) ----
+const CROPS_FALLBACK = ['Blé tendre','Blé dur','Orge','Maïs','Colza','Tournesol','Betterave','Pomme de terre','Vigne'];
+let cropsLoaded = false;
+
+async function loadCropsIntoSelect(){
+  if(cropsLoaded) return;
+  const select = document.getElementById('field-crop');
+  let crops = CROPS_FALLBACK;
+  try{
+    const res = await fetch(API_BASE + '/crops');
+    if(res.ok) crops = await res.json();
+  } catch(err){
+    console.warn('GET /crops injoignable, utilisation de la liste locale.', err.message);
+  }
+  crops.forEach(c=>{
+    const opt = document.createElement('option');
+    opt.value = c; opt.textContent = c;
+    select.appendChild(opt);
+  });
+  cropsLoaded = true;
+}
+
+// ---- connexion ----
+document.getElementById('btn-login').addEventListener('click', async ()=>{
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  let ok = true;
+
+  document.getElementById('err-login-email').textContent = EMAIL_RE_CHECK(email) ? '' : 'Adresse email invalide.';
+  if(!EMAIL_RE_CHECK(email)) ok = false;
+
+  document.getElementById('err-login-password').textContent = password ? '' : 'Mot de passe requis.';
+  if(!password) ok = false;
+  if(!ok) return;
+
+  const btn = document.getElementById('btn-login');
+  btn.disabled = true;
+  btn.textContent = 'Connexion…';
+
+  try{
+    const data = await apiCall('/auth/login', { method:'POST', body: JSON.stringify({ email, password }) });
+    state.userId = data.user_id;
+    state.token = data.access_token;
+    state.email = email;
+    state.apiOnline = true;
+    saveSession();
+    document.getElementById('err-login-password').textContent = '';
+    await enterFieldsList();
+  } catch(err){
+    document.getElementById('err-login-password').textContent =
+      err instanceof TypeError ? ('API injoignable (' + API_BASE + ') — impossible de se connecter sans elle.') : err.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Se connecter';
+  }
+});
+
+// ---- mes champs ----
+async function enterFieldsList(){
+  showStep('fields');
+  document.getElementById('fields-email-label').textContent = state.email || 'Mes champs';
+  const listEl = document.getElementById('fields-list');
+  const emptyEl = document.getElementById('fields-list-empty');
+  listEl.innerHTML = '';
+  try{
+    const fields = await apiCall('/fields', { method:'GET' });
+    emptyEl.style.display = fields.length ? 'none' : 'block';
+    fields.forEach(f=>{
+      const a = document.createElement('a');
+      a.className = 'field-row';
+      a.href = `apercu_champ_mobile.html?field_id=${f.id}&token=${state.token}`;
+      a.target = '_blank';
+      a.innerHTML = `<div class="field-row-name">${f.name}</div><div class="field-row-meta">${f.crop} · ${f.area_ha} ha${f.sowing_date ? ' · semé le '+f.sowing_date : ''}</div>`;
+      listEl.appendChild(a);
+    });
+  } catch(err){
+    emptyEl.textContent = 'Impossible de charger vos champs (' + err.message + ')';
+    emptyEl.style.display = 'block';
+  }
+}
+
+document.getElementById('btn-add-field').addEventListener('click', ()=> enterAddField());
+
+document.getElementById('btn-logout').addEventListener('click', ()=>{
+  clearSession();
+  state.token = null; state.userId = null; state.email = '';
+  showStep('welcome');
+});
+
+// ---- restauration automatique de session au chargement de la page ----
+// on ne fait pas juste confiance à la session stockée : on vérifie qu'elle
+// est toujours valide auprès du serveur (le token a pu expirer) avant
+// d'ouvrir directement "mes champs" plutôt que l'écran d'accueil
+(async function restoreSession(){
+  const saved = loadSession();
+  if(!saved || !saved.token) return;
+  state.token = saved.token;
+  state.userId = saved.userId;
+  state.email = saved.email;
+  try{
+    await apiCall('/fields', { method:'GET' }); // sert juste à vérifier que le token est encore valide
+    state.apiOnline = true;
+    await enterFieldsList();
+  } catch(err){
+    // token expiré, révoqué, ou API injoignable au démarrage -> repli propre sur l'accueil
+    console.warn('Session sauvegardée invalide ou API injoignable, retour à l\'accueil :', err.message);
+    clearSession();
+    state.token = null; state.userId = null; state.email = '';
+  }
+})();
+
+// ---- validation, miroir des règles de auth.py / fields.py (vérif immédiate
+// côté client ; le serveur revalide de toute façon derrière) ----
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+const EMAIL_RE_CHECK = (v) => EMAIL_RE.test(v);
+
+document.getElementById('btn-signup').addEventListener('click', async ()=>{
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  let ok = true;
+
+  if(!EMAIL_RE.test(email)){
+    document.getElementById('err-email').textContent = 'Adresse email invalide.';
+    ok = false;
+  } else {
+    document.getElementById('err-email').textContent = '';
+  }
+
+  if(password.length < 8){
+    document.getElementById('err-password').textContent = 'Le mot de passe doit contenir au moins 8 caractères.';
+    ok = false;
+  } else {
+    document.getElementById('err-password').textContent = '';
+  }
+
+  if(ok){
+    const btn = document.getElementById('btn-signup');
+    btn.disabled = true;
+    btn.textContent = 'Création en cours…';
+    try{
+      const data = await apiCall('/auth/register', {
+        method:'POST',
+        body: JSON.stringify({ email, password })
+      });
+      state.userId = data.user_id;
+      state.token = data.access_token;
+      state.apiOnline = true;
+      state.email = email;
+      saveSession();
+      await enterAddField();
+    } catch(err){
+      if(err instanceof TypeError){
+        // fetch a échoué avant même d'atteindre le serveur : probablement hors-ligne / API non lancée
+        document.getElementById('err-email').textContent =
+          'API injoignable (' + API_BASE + ') — poursuite en mode démo local.';
+        state.apiOnline = false;
+        state.email = email;
+        await enterAddField();
+      } else {
+        // erreur renvoyée par le serveur lui-même (ex: email déjà pris)
+        document.getElementById('err-email').textContent = err.message;
+      }
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Créer mon compte';
+    }
+  }
+});
+
+document.getElementById('btn-back-1').addEventListener('click', ()=>{
+  showStep(state.token ? 'fields' : 'welcome');
+});
+
+// ---- carte Leaflet pour dessiner le contour réel du champ ----
+let leafletMap = null;
+let drawnItems = null;
+
+function initLeafletMap(centerLat, centerLon){
+  leafletMap = L.map('leaflet-map', { zoomControl: true }).setView([centerLat, centerLon], 17);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap'
+  }).addTo(leafletMap);
+
+  drawnItems = new L.FeatureGroup();
+  leafletMap.addLayer(drawnItems);
+
+  const drawControl = new L.Control.Draw({
+    draw: {
+      polygon: { allowIntersection: false, showArea: false, shapeOptions: { color: '#EDE6D6', weight: 2, fillOpacity: 0.15 } },
+      marker: false, circle: false, circlemarker: false, polyline: false, rectangle: false
+    },
+    edit: { featureGroup: drawnItems, remove: true }
+  });
+  leafletMap.addControl(drawControl);
+
+  leafletMap.on(L.Draw.Event.CREATED, (e)=>{
+    drawnItems.clearLayers(); // un seul polygone (= un seul champ) à la fois
+    drawnItems.addLayer(e.layer);
+    updatePolygonFromLayer(e.layer);
+  });
+  leafletMap.on(L.Draw.Event.EDITED, (e)=>{
+    e.layers.eachLayer(layer => updatePolygonFromLayer(layer));
+  });
+  leafletMap.on(L.Draw.Event.DELETED, ()=>{
+    state.polygon = null;
+    state.areaHa = 0;
+    document.getElementById('area-readout').innerHTML = 'Surface estimée : <b>—</b>';
+  });
+}
+
+// même formule que _polygon_area_ha côté serveur (fields.py) : projection
+// équirectangulaire locale + formule du lacet — pour un retour visuel
+// immédiat cohérent avec ce que le serveur recalculera de toute façon
+function polygonAreaHa(latlngs){
+  const meanLat = latlngs.reduce((s,p)=>s+p.lat,0) / latlngs.length;
+  const metersPerDegLon = 111320 * Math.cos(meanLat * Math.PI/180);
+  const pts = latlngs.map(p => ({ x: p.lng * metersPerDegLon, y: p.lat * 111320 }));
+  let area = 0;
+  for(let i=0;i<pts.length;i++){
+    const j = (i+1) % pts.length;
+    area += pts[i].x*pts[j].y - pts[j].x*pts[i].y;
+  }
+  return Math.abs(area) / 2 / 10000;
+}
+
+function updatePolygonFromLayer(layer){
+  const latlngs = layer.getLatLngs()[0]; // premier anneau du polygone
+  state.polygon = latlngs.map(p => [p.lng, p.lat]); // [lon, lat], format attendu par l'API
+  state.areaHa = polygonAreaHa(latlngs);
+  document.getElementById('area-readout').innerHTML =
+    state.areaHa > 0.01
+      ? `Surface estimée : <b>${state.areaHa.toFixed(2)} ha</b>`
+      : 'Surface estimée : <b>—</b>';
+}
+
+async function enterAddField(){
+  showStep(2);
+  await loadCropsIntoSelect();
+  if(!leafletMap){
+    const center = await getDeviceLocation();
+    initLeafletMap(center.lat, center.lon);
+  }
+  // la carte doit être visible dans le DOM avant ce recalcul de taille,
+  // sinon Leaflet affiche une tuile grise/mal dimensionnée
+  setTimeout(()=> leafletMap.invalidateSize(), 50);
+}
+
+document.getElementById('btn-save-field').addEventListener('click', async ()=>{
+  const name = document.getElementById('field-name').value.trim();
+  const crop = document.getElementById('field-crop').value;
+  let ok = true;
+
+  document.getElementById('err-name').textContent = name ? '' : 'Le nom du champ est obligatoire.';
+  if(!name) ok = false;
+
+  document.getElementById('err-crop').textContent = crop ? '' : 'Choisissez une culture.';
+  if(!crop) ok = false;
+
+  if(!state.polygon || state.areaHa < 0.01){
+    document.getElementById('err-draw').textContent = 'Dessinez le contour du champ avant de continuer.';
+    ok = false;
+  } else {
+    document.getElementById('err-draw').textContent = '';
+  }
+
+  if(!ok) return;
+
+  state.name = name;
+  state.crop = crop;
+
+  const btn = document.getElementById('btn-save-field');
+  btn.disabled = true;
+  btn.textContent = 'Enregistrement…';
+
+  if(state.apiOnline && state.userId){
+    try{
+      const field = await apiCall('/fields', {
+        method:'POST',
+        body: JSON.stringify({
+          name: state.name,
+          crop: state.crop,
+          polygon: state.polygon,
+          sowing_date: document.getElementById('field-sowing').value || null
+        })
+      });
+      state.fieldId = field.id;
+      state.areaHa = field.area_ha; // surface recalculée côté serveur (formule du lacet), source de vérité
+      document.getElementById('err-draw').textContent = '';
+    } catch(err){
+      document.getElementById('err-draw').textContent = 'Erreur API : ' + err.message;
+      btn.disabled = false;
+      btn.textContent = 'Enregistrer ce champ';
+      return;
+    }
+  }
+  // si l'API est hors-ligne, on continue en local avec la surface calculée côté client
+
+  document.getElementById('s-name').textContent = state.name;
+  document.getElementById('s-crop').textContent = state.crop;
+  document.getElementById('s-area').textContent = state.areaHa.toFixed(2) + ' ha';
+  document.getElementById('s-email').textContent = state.email;
+
+  btn.disabled = false;
+  btn.textContent = 'Enregistrer ce champ';
+  showStep(3);
+});
+
+// point de référence si la géolocalisation n'est pas disponible/autorisée
+const FALLBACK_LOCATION = { lat: 48.304, lon: 1.5025 };
+
+function getDeviceLocation(){
+  return new Promise(resolve=>{
+    if(!navigator.geolocation){ resolve(FALLBACK_LOCATION); return; }
+    navigator.geolocation.getCurrentPosition(
+      pos => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+      () => resolve(FALLBACK_LOCATION),
+      { timeout: 3000 }
+    );
+  });
+}
+
+document.getElementById('btn-goto-dashboard').addEventListener('click', async ()=>{
+  if(state.apiOnline && state.token){
+    await enterFieldsList();
+  } else {
+    alert('Champ enregistré en local uniquement (API hors-ligne) — impossible de charger "Mes champs" sans connexion au serveur.');
+  }
+});
+
+// enregistrement du service worker (condition d'installabilité PWA sur Android/Chrome)
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/service-worker.js").catch(err =>
+    console.warn("Service worker non enregistré (normal en dev file:// ou hors HTTPS) :", err.message)
+  );
+}
+</script>
+</body>
+</html>

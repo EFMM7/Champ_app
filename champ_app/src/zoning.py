@@ -10,6 +10,14 @@ DEFAULT_THRESHOLDS = {
 }
 
 
+def get_thresholds(overrides: dict | None = None) -> dict:
+    """Retourne les seuils de zonage, avec possibilité de surcharge explicite."""
+    thresholds = dict(DEFAULT_THRESHOLDS)
+    if overrides:
+        thresholds.update({k: float(v) for k, v in overrides.items() if v is not None})
+    return thresholds
+
+
 def zone_id(row: int, col: int) -> str:
     """Convertit (ligne, colonne) en identifiant type 'A1', 'B4'..."""
     return f"{chr(65 + row)}{col + 1}"
@@ -43,19 +51,21 @@ def split_into_zones(raster: np.ndarray, n_rows: int, n_cols: int) -> list[dict]
     return zones
 
 
-def classify_zone(mean_value: float, thresholds: dict = DEFAULT_THRESHOLDS) -> str:
+def classify_zone(mean_value: float, thresholds: dict | None = None) -> str:
     """Retourne 'critical', 'warning' ou 'ok' selon la valeur moyenne de la zone."""
+    resolved_thresholds = get_thresholds(thresholds)
     if np.isnan(mean_value):
         return "no_data"
-    if mean_value < thresholds["critical"]:
+    if mean_value < resolved_thresholds["critical"]:
         return "critical"
-    if mean_value < thresholds["warning"]:
+    if mean_value < resolved_thresholds["warning"]:
         return "warning"
     return "ok"
 
 
-def annotate_zones(zones: list[dict], thresholds: dict = DEFAULT_THRESHOLDS) -> list[dict]:
+def annotate_zones(zones: list[dict], thresholds: dict | None = None) -> list[dict]:
     """Ajoute le statut (critical/warning/ok/no_data) à chaque zone."""
+    resolved_thresholds = get_thresholds(thresholds)
     for z in zones:
-        z["status"] = classify_zone(z["mean_value"], thresholds)
+        z["status"] = classify_zone(z["mean_value"], resolved_thresholds)
     return zones

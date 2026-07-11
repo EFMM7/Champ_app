@@ -2,6 +2,7 @@
 
 import json
 import math
+from datetime import date
 from pathlib import Path
 
 from src.db import get_connection
@@ -16,6 +17,25 @@ METERS_PER_DEGREE_LAT = 111_320
 
 class FieldError(Exception):
     """Erreur de validation lors de l'enregistrement d'un champ."""
+
+
+def _validate_sowing_date(sowing_date: str | None) -> str | None:
+    if sowing_date is None:
+        return None
+
+    if not isinstance(sowing_date, str):
+        raise FieldError("Format de date de semis invalide.")
+
+    normalized = sowing_date.strip()
+    if not normalized:
+        raise FieldError("Format de date de semis invalide.")
+
+    try:
+        date.fromisoformat(normalized)
+    except ValueError as exc:
+        raise FieldError("Format de date de semis invalide.") from exc
+
+    return normalized
 
 
 def _bbox_area_ha(min_lon: float, min_lat: float, max_lon: float, max_lat: float) -> float:
@@ -67,6 +87,73 @@ def _bbox_from_polygon(polygon: list[tuple[float, float]]) -> tuple[float, float
     return (min(lons), min(lats), max(lons), max(lats))
 
 
+def _orientation(a: tuple[float, float], b: tuple[float, float], c: tuple[float, float]) -> float:
+    return (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])
+
+
+def _on_segment(a: tuple[float, float], b: tuple[float, float], point: tuple[float, float]) -> bool:
+    return (
+        min(a[0], b[0]) <= point[0] <= max(a[0], b[0])
+        and min(a[1], b[1]) <= point[1] <= max(a[1], b[1])
+    )
+
+
+def _segments_intersect(
+    a: tuple[float, float],
+    b: tuple[float, float],
+    c: tuple[float, float],
+    d: tuple[float, float],
+) -> bool:
+    o1 = _orientation(a, b, c)
+    o2 = _orientation(a, b, d)
+    o3 = _orientation(c, d, a)
+    o4 = _orientation(c, d, b)
+
+    if (o1 > 0 and o2 < 0 or o1 < 0 and o2 > 0) and (o3 > 0 and o4 < 0 or o3 < 0 and o4 > 0):
+        return True
+
+    if abs(o1) < 1e-12 and _on_segment(a, b, c):
+        return True
+    if abs(o2) < 1e-12 and _on_segment(a, b, d):
+        return True
+    if abs(o3) < 1e-12 and _on_segment(c, d, a):
+        return True
+    if abs(o4) < 1e-12 and _on_segment(c, d, b):
+        return True
+    return False
+
+
+def _validate_polygon(polygon: list[tuple[float, float]]) -> None:
+    if len(polygon) < 3:
+        raise FieldError("Un polygone doit avoir au moins 3 points.")
+
+    seen = set()
+    for lon, lat in polygon:
+        if not (-180 <= lon <= 180 and -90 <= lat <= 90):
+            raise FieldError("Coordonnées hors des limites géographiques valides.")
+        point_key = (round(lon, 10), round(lat, 10))
+        if point_key in seen:
+            raise FieldError("Le polygone contient un point dupliqué.")
+        seen.add(point_key)
+
+    if len(polygon) >= 4:
+        n = len(polygon)
+        for i in range(n):
+            p1 = polygon[i]
+            p2 = polygon[(i + 1) % n]
+            for j in range(i + 1, n):
+                if j in {i, (i + 1) % n, (i - 1) % n}:
+                    continue
+                p3 = polygon[j]
+                p4 = polygon[(j + 1) % n]
+                if _segments_intersect(p1, p2, p3, p4):
+                    raise FieldError("Le polygone semble auto-intersecté.")
+
+        min_lon, min_lat, max_lon, max_lat = _bbox_from_polygon(polygon)
+        if max_lon - min_lon < 1e-6 or max_lat - min_lat < 1e-6:
+            raise FieldError("Le polygone semble invalide.")
+
+
 def register_field(
     db_path: str | Path,
     user_id: int,
@@ -92,14 +179,11 @@ def register_field(
     if crop not in CROPS_DISPONIBLES:
         raise FieldError(f"Culture inconnue. Choix possibles : {', '.join(CROPS_DISPONIBLES)}")
 
+    sowing_date = _validate_sowing_date(sowing_date)
     polygon_json = None
 
     if polygon is not None:
-        if len(polygon) < 3:
-            raise FieldError("Un polygone doit avoir au moins 3 points.")
-        for lon, lat in polygon:
-            if not (-180 <= lon <= 180 and -90 <= lat <= 90):
-                raise FieldError("Coordonnées hors des limites géographiques valides.")
+        _validate_polygon(polygon)
         bbox = _bbox_from_polygon(polygon)
         area_ha = _polygon_area_ha(polygon)
         polygon_json = json.dumps(polygon)

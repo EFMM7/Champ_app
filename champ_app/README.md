@@ -4,6 +4,24 @@ Code réel du projet (pas des mockups) : gestion de compte, enregistrement de
 parcelles, récupération (ou simulation) de bandes Sentinel-2, calcul NDVI et
 NDRE, découpage en zones, détection d'alertes, export JSON + cartes PNG.
 
+## Priorités réelles du projet
+
+Pour éviter de disperser l'effort, les priorités du moment sont les suivantes :
+
+1. **Stabiliser le cœur métier** : inscription/connexion, création de champ,
+   validation de géométrie, stockage et lecture cohérents.
+2. **Valider la qualité des résultats** : indices et zonage sur des données
+   réelles ou au moins des données de démo réalistes, sans se disperser sur
+   des sujets trop éloignés du cœur du produit.
+3. **Rendre l'API plus sûre et plus robuste** : secrets via variables
+   d'environnement, CORS maîtrisé, tests de régression autour des cas limites.
+4. **Élargir la couverture de tests** sur la validation métier et les sorties
+   de traitement, avant de penser à des améliorations plus "cosmétiques".
+
+Les sujets suivants restent utiles, mais sont **secondaires** tant que le
+cœur de l'application n'est pas stabilisé : PWA, déploiement multiplateforme,
+app native, ou stockage de données plus avancé.
+
 ## Structure
 
 ```
@@ -61,11 +79,11 @@ Documentation interactive auto-générée : http://localhost:8000/docs
 Endpoints disponibles :
 | Méthode | Route | Auth requise | Rôle |
 |---|---|---|---|
-| POST | `/auth/register` | non | Créer un compte, renvoie un token JWT |
-| POST | `/auth/login` | non | Se connecter, renvoie un token JWT |
+| POST | `/auth/register` | non | Créer un compte, renvoie un token JWT et sa durée de validité |
+| POST | `/auth/login` | non | Se connecter, renvoie un token JWT et sa durée de validité |
 | POST | `/fields` | oui | Enregistrer un champ (rattaché à l'utilisateur du token) |
 | GET | `/fields` | oui | Lister les champs de l'utilisateur du token |
-| GET | `/fields/{field_id}/zones` | oui | Zones NDVI/NDRE d'un champ (`?method=grid` ou `kmeans`, 404 si pas le sien) |
+| GET | `/fields/{field_id}/zones` | oui | Zones NDVI/NDRE d'un champ (`?method=grid` ou `kmeans`, avec `n_rows`, `n_cols`, `n_zones` optionnels, 404 si pas le sien) |
 | GET | `/crops` | non | Liste des cultures reconnues |
 
 L'authentification se fait via l'en-tête `Authorization: Bearer <token>`, token obtenu à l'inscription ou la connexion.
@@ -157,66 +175,18 @@ deux donnent 13.519 ha sur la même forme en L, testés indépendamment.
 Comparer les deux : `python -m src.compare_zoning` (génère une image
 côte-à-côte dans `output/comparaison_grille_vs_kmeans.png`).
 
-## Installer l'app sur un téléphone (PWA), pour de vrai
+## Priorité secondaire — PWA et déploiement
 
-Ce projet est maintenant une **PWA (Progressive Web App)** : l'app peut
-s'installer sur l'écran d'accueil d'un téléphone sans passer par l'App
-Store ou le Play Store. Deux ingrédients rendent ça possible :
-- `static/manifest.json` (nom, icônes, couleurs, mode plein écran)
-- `static/service-worker.js` (requis par Android/Chrome pour proposer
-  l'installation ; pas obligatoire mais sans effet négatif sur iOS/Safari)
+Le projet contient déjà une base de **PWA** : les fichiers de l'interface
+mobile sont servis par l'API, et l'app peut être installée sur un téléphone
+via un navigateur moderne. Cela reste utile, mais ce n'est pas la priorité
+majeure tant que le cœur métier n'est pas pleinement stabilisé.
 
-L'API FastAPI sert maintenant directement ces fichiers (`api.py` monte le
-dossier `static/` après toutes les routes `/api`) — **un seul service à
-déployer**, pas deux à synchroniser séparément.
-
-### Étape 1 — héberger l'API quelque part de public
-
-En local, `http://localhost:8000` n'existe que sur ton ordinateur — un
-téléphone ne peut pas l'atteindre depuis "n'importe où". Il faut un vrai
-hébergement avec HTTPS (obligatoire pour qu'un service worker fonctionne et
-que l'app soit installable). Options gratuites courantes pour un projet
-FastAPI comme celui-ci : **Render**, **Railway**, ou **Fly.io**. Exemple
-avec Render (gratuit, simple, pas de carte bancaire requise pour démarrer) :
-
-1. Pousser ce dossier `champ_app/` sur un dépôt GitHub
-2. Sur [render.com](https://render.com), créer un nouveau **Web Service**
-   connecté à ce dépôt
-3. Build command : `pip install -r requirements.txt`
-4. Start command : `uvicorn src.api:app --host 0.0.0.0 --port $PORT`
-5. Render fournit une URL du type `https://ton-app.onrender.com` — c'est
-   cette URL qui remplace `localhost:8000`
-
-⚠️ Je n'ai pas pu tester un déploiement réel dans cet environnement (pas
-d'accès réseau vers ces plateformes depuis ici) — ces étapes suivent leur
-fonctionnement standard pour une app FastAPI, mais vérifie leur
-documentation à jour en cas de changement d'interface.
-
-Variable d'environnement à définir sur la plateforme d'hébergement :
-`JWT_SECRET_KEY` (sinon la valeur par défaut de dev est utilisée — à
-éviter en production, voir plus bas).
-
-### Étape 2 — installer sur le téléphone
-
-Une fois l'API déployée, ouvrir `https://ton-app.onrender.com/onboarding_mobile.html`
-dans le navigateur du téléphone (Chrome sur Android, Safari sur iOS) :
-- **Android (Chrome)** : un bandeau "Ajouter à l'écran d'accueil" apparaît
-  automatiquement (ou menu ⋮ → "Installer l'application")
-- **iOS (Safari)** : bouton Partager (□↑) → "Sur l'écran d'accueil"
-
-L'icône installée ouvre l'app en plein écran, sans barre d'adresse, comme
-une vraie app — mais c'est toujours le même site web, pas un binaire
-compilé (donc pas de compte développeur Apple/Google requis).
-
-### Ce qui n'est PAS fait par ce mécanisme
-
-- **Pas de vraie app native** — pas d'accès aux API téléphone avancées
-  (notifications push fiables, widgets d'écran d'accueil, arrière-plan
-  prolongé). Pour ça, il faudrait un wrapper type Capacitor/React Native ou
-  du développement natif, une étape ultérieure bien plus lourde.
-- **Le service worker ne met en cache que la coquille visuelle**
-  (HTML/manifest/icônes), jamais les données de champs — volontairement,
-  pour ne jamais afficher une carte NDVI périmée sans prévenir l'utilisateur.
+À garder en vue, mais sans faire perdre de temps maintenant :
+- `static/manifest.json` et `static/service-worker.js`
+- un déploiement HTTPS propre pour pouvoir installer l'app sur mobile
+- une évolution vers une vraie app native seulement si l'usage métier le
+  justifie réellement
 
 ## Choix de sécurité à noter
 
@@ -229,35 +199,27 @@ compilé (donc pas de compte développeur Apple/Google requis).
 - Sessions gérées par token JWT (`tokens.py`), valable 7 jours, transmis via
   l'en-tête `Authorization: Bearer`. Le `user_id` n'est plus jamais transmis
   en clair par le client — il est toujours dérivé du token côté serveur.
-- ⚠️ `SECRET_KEY` a une valeur par défaut dans `tokens.py` **uniquement pour
-  le développement local** — à définir via la variable d'environnement
+- Les réponses d'erreur sont désormais structurées et cohérentes : chaque
+  erreur renvoie un objet avec `error`, `detail` et `message`, ce qui facilite
+  une intégration côté client et un traitement homogène des validations.
+- ⚠️ `JWT_SECRET_KEY` a une valeur par défaut **uniquement pour le
+  développement local** — à définir via la variable d'environnement
   `JWT_SECRET_KEY` avant tout déploiement réel.
+- Le CORS est désormais limité par défaut à des origines locales sûres
+  (`localhost` / `127.0.0.1` sur les ports 3000 et 8000), avec possibilité
+  de surcharger la liste via `CORS_ALLOWED_ORIGINS`.
 - Un utilisateur qui demande les zones d'un champ qui ne lui appartient pas
   reçoit un 404 (pas un 403), pour ne pas révéler l'existence du champ d'un
   autre utilisateur — testé dans `test_api.py`.
 
-## Prochaines étapes techniques suggérées
+## Prochaines étapes, par ordre de priorité
 
-1. Lancer l'API avec `uvicorn` en local, brancher les écrans mobiles
-   (`onboarding_mobile.html`, `apercu_champ_mobile.html`) dessus — c'est
-   déjà fait dans le code, il ne reste qu'à démarrer le serveur et essayer
-2. Tester `fetch_sentinel.py` avec un vrai compte Sentinel Hub sur une
-   parcelle réelle, et comparer visuellement au rendu attendu
-3. Faire valider les seuils `DEFAULT_THRESHOLDS` (`zoning.py`) par un
-   agronome — ce sont des hypothèses de travail, pas des références
-4. Remplacer la saisie de bbox brute par un vrai dessin de polygone sur
-   carte (ex : Leaflet + Leaflet.draw côté app mobile) — **fait**
-5. Stocker le token de façon persistante côté app (ex : stockage sécurisé
-   natif) plutôt que de le passer en paramètre d'URL comme dans ce
-   prototype — **fait pour l'onboarding** : `onboarding_mobile.html` sauve
-   la session dans `localStorage` et la revalide auprès du serveur au
-   chargement (repli propre sur l'écran d'accueil si le token a expiré) ;
-   `apercu_champ_mobile.html` continue de recevoir son token en paramètre
-   d'URL depuis la liste des champs, ce qui reste à améliorer pour une vraie
-   app native (stockage sécurisé type Keychain/Keystore)
-6. Basculer l'app mobile sur `method=kmeans` par défaut pour l'affichage
-   des zones, une fois les seuils validés par un agronome — **fait** :
-   `apercu_champ_mobile.html` demande désormais `?method=kmeans` et affiche
-   les zones comme des formes organiques (raster basse résolution 30x40,
-   `label_grid` dans la réponse API) plutôt qu'une grille rigide, avec repli
-   automatique sur le mode démo si l'API ne renvoie pas de raster
+1. **Valider le cœur du flux** sur des parcelles réelles ou des données de
+   démo plus proches du terrain, puis ajuster les seuils de zonage si besoin.
+2. **Renforcer la sécurité d'exploitation** : `JWT_SECRET_KEY` obligatoire en
+   environnement réel, CORS restreint, secrets gérés proprement.
+3. **Ajouter des tests métier de plus en plus ciblés** sur la géométrie,
+   l'authentification et les sorties de traitement.
+4. **Préparer une évolution plus robuste si l'usage devient concret** : base de
+   données plus solide, logs, monitoring, puis seulement après la stabilité du
+   cœur fonctionnel.

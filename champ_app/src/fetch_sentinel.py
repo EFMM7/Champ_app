@@ -43,13 +43,17 @@ function evaluatePixel(sample) {
 """
 
 
+class SentinelHubConfigError(RuntimeError):
+    """Levée quand la configuration Sentinel Hub n'est pas complète."""
+
+
 def build_config() -> SHConfig:
     """Construit la config Sentinel Hub à partir des variables d'environnement."""
     config = SHConfig()
-    config.sh_client_id = os.environ.get("SH_CLIENT_ID", "")
-    config.sh_client_secret = os.environ.get("SH_CLIENT_SECRET", "")
+    config.sh_client_id = os.environ.get("SH_CLIENT_ID", "").strip()
+    config.sh_client_secret = os.environ.get("SH_CLIENT_SECRET", "").strip()
     if not config.sh_client_id or not config.sh_client_secret:
-        raise RuntimeError(
+        raise SentinelHubConfigError(
             "SH_CLIENT_ID et SH_CLIENT_SECRET doivent être définis. "
             "Créez un compte gratuit sur sentinel-hub.com pour les obtenir."
         )
@@ -70,7 +74,11 @@ def fetch_field_bands(
 
     Retourne un array numpy de forme (H, W, 4).
     """
-    config = build_config()
+    try:
+        config = build_config()
+    except SentinelHubConfigError:
+        raise
+
     bbox = BBox(bbox=bbox_coords, crs=CRS.WGS84)
     size = bbox_to_dimensions(bbox, resolution=resolution)
 

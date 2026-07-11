@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 
 from src.indices import compute_all_indices
-from src.zoning import split_into_zones, annotate_zones, DEFAULT_THRESHOLDS
+from src.zoning import split_into_zones, annotate_zones, DEFAULT_THRESHOLDS, get_thresholds
 from src.zoning_kmeans import segment_zones_kmeans, stats_for_other_raster, downsample_label_map
 from src.demo_data import generate_synthetic_bands
 
@@ -31,7 +31,14 @@ FIELD_CMAP = LinearSegmentedColormap.from_list(
 )
 
 
-def run_pipeline(bands: np.ndarray, n_rows: int = 8, n_cols: int = 12, method: str = "grid", n_zones: int = 6) -> dict:
+def run_pipeline(
+    bands: np.ndarray,
+    n_rows: int = 8,
+    n_cols: int = 12,
+    method: str = "grid",
+    n_zones: int = 6,
+    thresholds: dict | None = None,
+) -> dict:
     """
     method="grid"   : grille régulière n_rows x n_cols (rapide, zones fixes)
     method="kmeans" : n_zones zones homogènes réelles (recommandé pour de vraies
@@ -54,8 +61,9 @@ def run_pipeline(bands: np.ndarray, n_rows: int = 8, n_cols: int = 12, method: s
         # (chaque cellule = index dans `merged`, -1 = pas de donnée)
         label_grid = {"rows": 30, "cols": 40, "data": downsample_label_map(label_map, 30, 40)}
     else:
-        ndvi_zones = annotate_zones(split_into_zones(indices_rasters["ndvi"], n_rows, n_cols))
-        ndre_zones = annotate_zones(split_into_zones(indices_rasters["ndre"], n_rows, n_cols))
+        resolved_thresholds = get_thresholds(thresholds)
+        ndvi_zones = annotate_zones(split_into_zones(indices_rasters["ndvi"], n_rows, n_cols), resolved_thresholds)
+        ndre_zones = annotate_zones(split_into_zones(indices_rasters["ndre"], n_rows, n_cols), resolved_thresholds)
         merged = [{
             "id": zv["id"],
             "ndvi": round(zv["mean_value"], 3) if not np.isnan(zv["mean_value"]) else None,
@@ -68,7 +76,7 @@ def run_pipeline(bands: np.ndarray, n_rows: int = 8, n_cols: int = 12, method: s
     alerts = [z for z in merged if z["status"] == "critical"]
 
     return {
-        "thresholds_used": DEFAULT_THRESHOLDS,
+        "thresholds_used": get_thresholds(thresholds),
         "grid": grid_info,
         "zones": merged,
         "alert_count": len(alerts),
@@ -97,20 +105,38 @@ def main():
     parser.add_argument("--cols", type=int, default=12)
     parser.add_argument("--method", choices=["grid", "kmeans"], default="grid")
     parser.add_argument("--n-zones", type=int, default=6, help="nombre de zones (mode kmeans uniquement)")
+    parser.add_argument("--critical-threshold", type=float, default=DEFAULT_THRESHOLDS["critical"], help="seuil critique du zonage")
+    parser.add_argument("--warning-threshold", type=float, default=DEFAULT_THRESHOLDS["warning"], help="seuil warning du zonage")
     args = parser.parse_args()
 
     OUTPUT_DIR.mkdir(exist_ok=True)
+
+    thresholds = {"critical": args.critical_threshold, "warning": args.warning_threshold}
 
     if args.demo or not args.bbox:
         print("→ Mode démo : génération de bandes synthétiques (pas d'appel réseau).")
         bands = generate_synthetic_bands()
     else:
-        from src.fetch_sentinel import fetch_field_bands
+        from src.fetch_sentinel import SentinelHubConfigError, fetch_field_bands
         bbox_coords = tuple(float(x) for x in args.bbox.split(","))
         print(f"→ Récupération Sentinel Hub pour bbox={bbox_coords}...")
-        bands = fetch_field_bands(bbox_coords)
+        try:
+            bands = fetch_field_bands(bbox_coords)
+        except SentinelHubConfigError as exc:
+            print(f"→ Erreur Sentinel Hub : {exc}")
+            return 2
+        except Exception as exc:  # pragma: no cover - defensive CLI path
+            print(f"→ Erreur Sentinel Hub inattendue : {exc}")
+            return 2
 
-    result, rasters = run_pipeline(bands, n_rows=args.rows, n_cols=args.cols, method=args.method, n_zones=args.n_zones)
+    result, rasters = run_pipeline(
+        bands,
+        n_rows=args.rows,
+        n_cols=args.cols,
+        method=args.method,
+        n_zones=args.n_zones,
+        thresholds=thresholds,
+    )
 
     json_path = OUTPUT_DIR / "zones.json"
     json_path.write_text(json.dumps(result, ensure_ascii=False, indent=2))

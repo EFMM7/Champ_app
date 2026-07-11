@@ -1,0 +1,47 @@
+from fastapi.testclient import TestClient
+
+from src import api
+
+
+def test_health_endpoint_reports_service_status(monkeypatch, tmp_path):
+    db_path = tmp_path / "app.db"
+    monkeypatch.setattr(api, "DB_PATH", db_path)
+
+    with TestClient(api.app) as client:
+        response = client.get("/health")
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["status"] == "ok"
+        assert payload["database"] == "ready"
+
+
+def test_get_allowed_origins_parses_environment(monkeypatch):
+    monkeypatch.setenv("CORS_ALLOWED_ORIGINS", "https://app.example.com, https://admin.example.com")
+    assert api.get_allowed_origins() == ["https://app.example.com", "https://admin.example.com"]
+
+
+def test_get_allowed_origins_defaults_to_safe_local_origins(monkeypatch):
+    monkeypatch.delenv("CORS_ALLOWED_ORIGINS", raising=False)
+    monkeypatch.delenv("ENV", raising=False)
+    assert api.get_allowed_origins() == [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    ]
+
+
+def test_get_db_path_uses_environment_override(monkeypatch, tmp_path):
+    db_path = tmp_path / "custom.db"
+    monkeypatch.setenv("CHAMP_DB_PATH", str(db_path))
+    assert api.get_db_path() == db_path
+
+
+def test_init_db_is_idempotent(tmp_path):
+    from src.db import init_db
+
+    db_path = tmp_path / "app.db"
+    init_db(db_path)
+    init_db(db_path)
+
+    assert db_path.exists()

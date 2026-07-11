@@ -72,8 +72,8 @@ def test_zones_endpoint_accepts_and_forwards_query_parameters(monkeypatch, tmp_p
 
     captured = {}
 
-    def fake_run_pipeline(bands, n_rows=8, n_cols=12, method="grid", n_zones=6):
-        captured.update({"n_rows": n_rows, "n_cols": n_cols, "method": method, "n_zones": n_zones})
+    def fake_run_pipeline(bands, n_rows=8, n_cols=12, method="grid", n_zones=6, thresholds=None):
+        captured.update({"n_rows": n_rows, "n_cols": n_cols, "method": method, "n_zones": n_zones, "thresholds": thresholds})
         return {
             "thresholds_used": {},
             "grid": {"method": method, "rows": n_rows, "cols": n_cols},
@@ -104,9 +104,9 @@ def test_zones_endpoint_accepts_and_forwards_query_parameters(monkeypatch, tmp_p
         field_id = field_response.json()["id"]
 
         response = client.get(
-            f"/fields/{field_id}/zones?method=grid&n_rows=4&n_cols=6&n_zones=3",
+            f"/fields/{field_id}/zones?method=grid&n_rows=4&n_cols=6&n_zones=3&critical_threshold=0.2&warning_threshold=0.4",
             headers=headers,
         )
 
     assert response.status_code == 200
-    assert captured == {"n_rows": 4, "n_cols": 6, "method": "grid", "n_zones": 3}
+    assert captured == {"n_rows": 4, "n_cols": 6, "method": "grid", "n_zones": 3, "thresholds": {"critical": 0.2, "warning": 0.4}}

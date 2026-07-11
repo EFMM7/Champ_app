@@ -118,12 +118,23 @@ def main():
         bands = generate_synthetic_bands()
     else:
         from src.fetch_sentinel import SentinelHubConfigError, fetch_field_bands
-        bbox_coords = tuple(float(x) for x in args.bbox.split(","))
+        try:
+            bbox_parts = args.bbox.split(",")
+            if len(bbox_parts) != 4:
+                raise ValueError("--bbox doit contenir exactement 4 valeurs : min_lon,min_lat,max_lon,max_lat")
+            bbox_coords = tuple(float(x) for x in bbox_parts)
+        except ValueError as exc:
+            print(f"→ Erreur de paramètres : {exc}")
+            return 2
+
         print(f"→ Récupération Sentinel Hub pour bbox={bbox_coords}...")
         try:
             bands = fetch_field_bands(bbox_coords)
         except SentinelHubConfigError as exc:
             print(f"→ Erreur Sentinel Hub : {exc}")
+            return 2
+        except ValueError as exc:
+            print(f"→ Erreur de paramètres : {exc}")
             return 2
         except Exception as exc:  # pragma: no cover - defensive CLI path
             print(f"→ Erreur Sentinel Hub inattendue : {exc}")

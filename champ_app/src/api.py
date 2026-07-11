@@ -21,8 +21,12 @@ from src import tokens as tokens_module
 from src.db import init_db
 from src.auth import register_user, authenticate_user, AuthError
 from src.fields import register_field, list_fields, get_field, FieldError, CROPS_DISPONIBLES
+from src.config import load_environment
 from src.demo_data import generate_synthetic_bands
 from src.main import run_pipeline
+from src.tokens import is_production_environment
+
+load_environment()
 
 DB_PATH = Path(__file__).resolve().parent.parent / "output" / "app.db"
 
@@ -51,6 +55,8 @@ def get_allowed_origins() -> list[str]:
 async def lifespan(app: FastAPI):
     db_path = get_db_path()
     db_path.parent.mkdir(exist_ok=True)
+    if is_production_environment():
+        tokens_module.get_secret_key()
     init_db(db_path)
     yield
 
@@ -86,7 +92,12 @@ app.add_middleware(
 
 @app.get("/health")
 def api_health():
-    return {"status": "ok", "database": "ready"}
+    return {
+        "status": "ok",
+        "database": "ready",
+        "environment": "production" if is_production_environment() else "development",
+        "database_path": str(get_db_path()),
+    }
 
 
 # ---------- schémas de requête/réponse ----------
@@ -202,6 +213,8 @@ def api_field_zones(
     n_rows: int = 8,
     n_cols: int = 12,
     n_zones: int = 6,
+    critical_threshold: float | None = None,
+    warning_threshold: float | None = None,
     user_id: int = Depends(get_current_user_id),
 ):
     field = get_field(get_db_path(), field_id)
@@ -218,10 +231,24 @@ def api_field_zones(
     if n_zones < 1:
         _raise_api_error(422, "validation_error", "n_zones doit être un entier positif.")
 
+    thresholds = None
+    if critical_threshold is not None or warning_threshold is not None:
+        thresholds = {
+            "critical": critical_threshold,
+            "warning": warning_threshold,
+        }
+
     # Mode démo : pas d'accès réseau à Sentinel Hub dans cet environnement.
     # En production, remplacer par : fetch_sentinel.fetch_field_bands(bbox_du_champ)
     bands = generate_synthetic_bands(seed=field_id)
-    result, _ = run_pipeline(bands, n_rows=n_rows, n_cols=n_cols, method=method, n_zones=n_zones)
+    result, _ = run_pipeline(
+        bands,
+        n_rows=n_rows,
+        n_cols=n_cols,
+        method=method,
+        n_zones=n_zones,
+        thresholds=thresholds,
+    )
     result["field_id"] = field_id
     result["field_name"] = field["name"]
     return result

@@ -11,16 +11,24 @@ import datetime as dt
 
 from jose import jwt, JWTError, JWSError
 
+from src.config import load_environment
+
+load_environment()
+
 SECRET_KEY = os.environ.get("JWT_SECRET_KEY")
 ALGORITHM = "HS256"
 TOKEN_EXPIRY_HOURS = 24 * 7  # 7 jours
+
+
+def is_production_environment() -> bool:
+    return os.environ.get("ENV", "development").strip().lower() in {"prod", "production", "true"}
 
 
 def get_secret_key() -> str:
     secret_key = os.environ.get("JWT_SECRET_KEY")
     if secret_key:
         return secret_key
-    if os.environ.get("ENV") == "production":
+    if is_production_environment():
         raise RuntimeError("JWT_SECRET_KEY doit être défini en production.")
     return "dev-only-secret-do-not-use-in-production"
 

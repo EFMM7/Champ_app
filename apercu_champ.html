@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Aperçu champ — prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --soil-dark: #1C1710;
+    --surface: #26211A;
+    --surface-raised: #2F2921;
+    --line: #3C352A;
+    --healthy: #6FA059;
+    --mid: #9FBB6C;
+    --stress: #D9A441;
+    --critical: #C4623A;
+    --parchment: #EDE6D6;
+    --sage: #9AA88B;
+    --sage-dim: #6E7A63;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background: var(--soil-dark);
+    color: var(--parchment);
+    font-family:'IBM Plex Sans', sans-serif;
+    padding: 28px;
+  }
+  .app{
+    max-width: 1080px;
+    margin: 0 auto;
+  }
+  .topbar{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    border-bottom:1px solid var(--line);
+    padding-bottom:16px;
+    margin-bottom:20px;
+    flex-wrap:wrap;
+    gap:12px;
+  }
+  .field-title{
+    font-family:'Big Shoulders Display', sans-serif;
+    font-weight:800;
+    font-size:34px;
+    letter-spacing:0.5px;
+    text-transform:uppercase;
+    line-height:1;
+  }
+  .field-sub{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    color: var(--sage);
+    margin-top:6px;
+  }
+  .weather-chip{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    color: var(--parchment);
+    background: var(--surface);
+    border:1px solid var(--line);
+    padding:8px 14px;
+    border-radius:2px;
+    text-align:right;
+  }
+  .weather-chip b{ color: var(--mid); font-size:15px; }
+
+  .layout{
+    display:grid;
+    grid-template-columns: 1fr 300px;
+    gap:24px;
+  }
+  @media (max-width: 760px){
+    .layout{ grid-template-columns: 1fr; }
+  }
+
+  .panel{
+    background: var(--surface);
+    border:1px solid var(--line);
+    border-radius:3px;
+    padding:18px;
+  }
+
+  .index-tabs{
+    display:flex;
+    gap:2px;
+    margin-bottom:16px;
+  }
+  .index-tab{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    letter-spacing:0.5px;
+    background:transparent;
+    border:1px solid var(--line);
+    color: var(--sage);
+    padding:8px 14px;
+    cursor:pointer;
+    text-transform:uppercase;
+  }
+  .index-tab.active{
+    background: var(--surface-raised);
+    color: var(--parchment);
+    border-color: var(--sage-dim);
+  }
+  .index-tab:hover{ color: var(--parchment); }
+
+  .grid-wrap{
+    display:inline-block;
+  }
+  .grid{
+    display:grid;
+    grid-template-columns: repeat(12, 40px);
+    grid-template-rows: repeat(7, 40px);
+    gap:3px;
+  }
+  .cell{
+    width:40px; height:40px;
+    border-radius:2px;
+    cursor:pointer;
+    position:relative;
+    transition: transform 0.08s ease;
+    border: 1px solid rgba(0,0,0,0.25);
+  }
+  .cell:hover{ transform: scale(1.08); z-index:2; }
+  .cell.selected{
+    outline: 2px solid var(--parchment);
+    outline-offset: 1px;
+  }
+  .cell.alert::after{
+    content:'';
+    position:absolute;
+    top:3px; right:3px;
+    width:5px; height:5px;
+    border-radius:50%;
+    background: var(--soil-dark);
+  }
+
+  .legend{
+    margin-top:16px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .legend-bar{
+    width:180px; height:10px;
+    border-radius:2px;
+    background: linear-gradient(to right, var(--critical), var(--stress), var(--mid), var(--healthy));
+  }
+  .legend-labels{
+    display:flex;
+    justify-content:space-between;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10px;
+    color: var(--sage);
+    width:180px;
+  }
+  .legend-text{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color: var(--sage);
+  }
+
+  .side-title{
+    font-family:'Big Shoulders Display', sans-serif;
+    font-weight:600;
+    font-size:16px;
+    text-transform:uppercase;
+    letter-spacing:0.5px;
+    color: var(--sage);
+    margin:0 0 12px 0;
+  }
+
+  .zone-id{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:22px;
+    color: var(--parchment);
+    margin-bottom:2px;
+  }
+  .zone-label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color: var(--sage-dim);
+    margin-bottom:16px;
+  }
+
+  .metric-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    padding:8px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .metric-row:last-of-type{ border-bottom:none; }
+  .metric-name{ font-size:13px; color: var(--sage); }
+  .metric-value{ font-family:'IBM Plex Mono', monospace; font-size:14px; }
+
+  .recommendation{
+    margin-top:16px;
+    padding:12px;
+    background: var(--surface-raised);
+    border-left:3px solid var(--stress);
+    font-size:13px;
+    line-height:1.5;
+  }
+  .recommendation.ok{ border-left-color: var(--healthy); }
+  .recommendation.critical{ border-left-color: var(--critical); }
+
+  .alerts-panel{ margin-top:18px; }
+  .alert-item{
+    display:flex;
+    justify-content:space-between;
+    padding:8px 10px;
+    background: var(--surface-raised);
+    border-radius:2px;
+    margin-bottom:6px;
+    cursor:pointer;
+    font-size:12px;
+  }
+  .alert-item:hover{ outline:1px solid var(--sage-dim); }
+  .alert-zone{ font-family:'IBM Plex Mono', monospace; color: var(--parchment); }
+  .alert-val{ font-family:'IBM Plex Mono', monospace; color: var(--critical); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="topbar">
+    <div>
+      <div class="field-title">Parcelle Nord — Blé tendre</div>
+      <div class="field-sub">12.4 HA · DERNIÈRE IMAGE SATELLITE : IL Y A 2 JOURS · SENTINEL-2</div>
+    </div>
+    <div class="weather-chip">
+      PROCHAINE PASSAGE PRÉVU<br>
+      <b>DANS 3 JOURS</b>
+    </div>
+  </div>
+
+  <div class="layout">
+    <div class="panel">
+      <div class="index-tabs" id="tabs"></div>
+      <div class="grid-wrap">
+        <div class="grid" id="grid"></div>
+      </div>
+      <div class="legend">
+        <div>
+          <div class="legend-bar"></div>
+          <div class="legend-labels"><span>Faible</span><span>Fort</span></div>
+        </div>
+        <div class="legend-text" id="legend-text">NDVI — vigueur de la végétation</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel">
+        <div class="side-title">Zone sélectionnée</div>
+        <div class="zone-id" id="zone-id">B4</div>
+        <div class="zone-label" id="zone-crop">Blé tendre — stade montaison</div>
+
+        <div class="metric-row">
+          <span class="metric-name">NDVI</span>
+          <span class="metric-value" id="v-ndvi">—</span>
+        </div>
+        <div class="metric-row">
+          <span class="metric-name">NDRE</span>
+          <span class="metric-value" id="v-ndre">—</span>
+        </div>
+        <div class="metric-row">
+          <span class="metric-name">Humidité estimée</span>
+          <span class="metric-value" id="v-moist">—</span>
+        </div>
+
+        <div class="recommendation" id="reco">Sélectionnez une zone sur la carte.</div>
+      </div>
+
+      <div class="panel alerts-panel">
+        <div class="side-title">Zones à surveiller</div>
+        <div id="alerts-list"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const COLS = 12, ROWS = 7;
+const N = COLS * ROWS;
+
+// deterministic pseudo-noise so the map looks like a real raster, not random each load
+function noise(x, y, seed){
+  return (Math.sin(x*12.9898 + y*78.233 + seed) * 43758.5453) % 1;
+}
+function frac(v){ return v - Math.floor(v); }
+
+// hotspots simulate real stress patterns (drainage corner, compacted strip)
+const hotspots = [
+  {cx:1.5, cy:5.2, r:3.2, strength:-0.55},   // stressed corner (poor drainage)
+  {cx:8, cy:1, r:2.5, strength:-0.3},        // compacted strip
+  {cx:6, cy:3.5, r:5, strength:0.15}         // healthy core
+];
+
+function baseValue(x, y, seed){
+  let v = 0.72;
+  hotspots.forEach(h=>{
+    const d = Math.sqrt((x-h.cx)**2 + (y-h.cy)**2);
+    v += h.strength * Math.exp(-(d*d)/(2*h.r*h.r));
+  });
+  v += (frac(noise(x, y, seed)) - 0.5) * 0.12;
+  return Math.max(0.05, Math.min(0.95, v));
+}
+
+const cells = [];
+for(let y=0; y<ROWS; y++){
+  for(let x=0; x<COLS; x++){
+    cells.push({
+      x, y,
+      id: String.fromCharCode(65 + y) + (x+1),
+      ndvi: baseValue(x, y, 1),
+      ndre: baseValue(x, y, 7) * 0.9 + 0.05,
+      moist: baseValue(x, y, 13) * 0.85 + 0.1
+    });
+  }
+}
+
+const indices = {
+  ndvi: { label:'NDVI — vigueur de la végétation', key:'ndvi' },
+  ndre: { label:'NDRE — stress azoté (sensible sur végétation dense)', key:'ndre' },
+  moist:{ label:'Indice d\'humidité — stress hydrique', key:'moist' }
+};
+
+let activeIndex = 'ndvi';
+let selectedCell = null;
+
+const colorStops = [
+  {t:0,    c:[196,98,58]},   // critical clay
+  {t:0.4,  c:[217,164,65]},  // stress amber
+  {t:0.7,  c:[159,187,108]}, // mid green
+  {t:1,    c:[111,160,89]}   // healthy
+];
+function lerpColor(v){
+  for(let i=0;i<colorStops.length-1;i++){
+    const a = colorStops[i], b = colorStops[i+1];
+    if(v >= a.t && v <= b.t){
+      const f = (v - a.t) / (b.t - a.t);
+      const c = a.c.map((ch,i)=> Math.round(ch + (b.c[i]-ch)*f));
+      return `rgb(${c[0]},${c[1]},${c[2]})`;
+    }
+  }
+  return `rgb(${colorStops[colorStops.length-1].c.join(',')})`;
+}
+
+function recommendationFor(cell){
+  const v = cell[activeIndex];
+  if(activeIndex === 'ndvi'){
+    if(v < 0.35) return {text:'Végétation clairsemée détectée. Vérifier le drainage et envisager un diagnostic terrain avant tout apport.', level:'critical'};
+    if(v < 0.55) return {text:'Vigueur en dessous de la moyenne de la parcelle. Surveiller l\'évolution sur les 2 prochains passages satellite.', level:'warning'};
+    return {text:'Vigueur satisfaisante, aucune action requise sur cette zone.', level:'ok'};
+  }
+  if(activeIndex === 'ndre'){
+    if(v < 0.35) return {text:'Signe de carence azotée probable. Un apport localisé pourrait être pertinent avant le stade suivant.', level:'critical'};
+    if(v < 0.55) return {text:'Légère baisse d\'azote foliaire. À recroiser avec une analyse de sol si la tendance se confirme.', level:'warning'};
+    return {text:'Statut azoté correct pour le stade actuel.', level:'ok'};
+  }
+  if(v < 0.35) return {text:'Stress hydrique marqué. Prioriser cette zone si irrigation disponible.', level:'critical'};
+  if(v < 0.55) return {text:'Humidité en baisse. À surveiller si absence de pluie dans les prochains jours.', level:'warning'};
+  return {text:'Niveau d\'humidité satisfaisant.', level:'ok'};
+}
+
+function render(){
+  document.getElementById('legend-text').textContent = indices[activeIndex].label;
+
+  const tabsEl = document.getElementById('tabs');
+  tabsEl.innerHTML = '';
+  Object.keys(indices).forEach(key=>{
+    const btn = document.createElement('button');
+    btn.className = 'index-tab' + (key===activeIndex ? ' active':'');
+    btn.textContent = key;
+    btn.onclick = ()=>{ activeIndex = key; render(); };
+    tabsEl.appendChild(btn);
+  });
+
+  const gridEl = document.getElementById('grid');
+  gridEl.innerHTML = '';
+  cells.forEach(cell=>{
+    const div = document.createElement('div');
+    const v = cell[activeIndex];
+    div.className = 'cell' + (v < 0.35 ? ' alert' : '') + (selectedCell===cell ? ' selected':'');
+    div.style.background = lerpColor(v);
+    div.title = cell.id;
+    div.onclick = ()=>{ selectedCell = cell; render(); };
+    gridEl.appendChild(div);
+  });
+
+  const sel = selectedCell || cells.find(c=>c[activeIndex] < 0.35) || cells[0];
+  document.getElementById('zone-id').textContent = sel.id;
+  document.getElementById('v-ndvi').textContent = sel.ndvi.toFixed(2);
+  document.getElementById('v-ndre').textContent = sel.ndre.toFixed(2);
+  document.getElementById('v-moist').textContent = (sel.moist*100).toFixed(0) + '%';
+
+  const reco = recommendationFor(sel);
+  const recoEl = document.getElementById('reco');
+  recoEl.textContent = reco.text;
+  recoEl.className = 'recommendation' + (reco.level==='critical' ? ' critical' : reco.level==='ok' ? ' ok' : '');
+
+  const alertsEl = document.getElementById('alerts-list');
+  alertsEl.innerHTML = '';
+  const worst = [...cells].sort((a,b)=> a[activeIndex]-b[activeIndex]).slice(0,4);
+  worst.forEach(c=>{
+    const row = document.createElement('div');
+    row.className = 'alert-item';
+    row.innerHTML = `<span class="alert-zone">${c.id}</span><span class="alert-val">${c[activeIndex].toFixed(2)}</span>`;
+    row.onclick = ()=>{ selectedCell = c; render(); };
+    alertsEl.appendChild(row);
+  });
+}
+
+render();
+</script>
+</body>
+</html>

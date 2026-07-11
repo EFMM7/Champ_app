@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aperçu mobile — prototype</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<meta name="theme-color" content="#1C1710">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --soil-dark: #1C1710;
+    --surface: #26211A;
+    --surface-raised: #2F2921;
+    --line: #3C352A;
+    --healthy: #6FA059;
+    --mid: #9FBB6C;
+    --stress: #D9A441;
+    --critical: #C4623A;
+    --parchment: #EDE6D6;
+    --sage: #9AA88B;
+    --sage-dim: #6E7A63;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  body{
+    margin:0;
+    background:#0E0C09;
+    color: var(--parchment);
+    font-family:'IBM Plex Sans', sans-serif;
+    display:flex;
+    justify-content:center;
+    padding: 16px 0;
+  }
+  .phone{
+    width:390px;
+    max-width:100%;
+    background: var(--soil-dark);
+    min-height: 720px;
+    display:flex;
+    flex-direction:column;
+    position:relative;
+    border-radius: 6px;
+    overflow:hidden;
+  }
+
+  .offline-banner{
+    background: var(--surface-raised);
+    color: var(--sage);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    text-align:center;
+    padding:7px;
+    display:none;
+    border-bottom:1px solid var(--line);
+  }
+  .offline-banner.show{ display:block; }
+
+  .topbar{
+    padding:16px 18px 12px 18px;
+    border-bottom:1px solid var(--line);
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+  .field-title{
+    font-family:'Big Shoulders Display', sans-serif;
+    font-weight:800;
+    font-size:20px;
+    text-transform:uppercase;
+    letter-spacing:0.3px;
+  }
+  .field-sub{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10px;
+    color: var(--sage);
+    margin-top:3px;
+  }
+  .source-badge{
+    display:inline-block;
+    margin-top:6px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:9px;
+    letter-spacing:0.5px;
+    padding:2px 7px;
+    border-radius:2px;
+  }
+  .source-badge.live{ background: rgba(111,160,89,0.2); color: var(--healthy); }
+  .source-badge.demo{ background: rgba(217,164,65,0.2); color: var(--stress); }
+  .sync-btn{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10px;
+    background:transparent;
+    border:1px solid var(--line);
+    color: var(--sage);
+    padding:6px 9px;
+    border-radius:2px;
+  }
+
+  .screen{ display:none; flex:1; padding:16px 18px 90px 18px; overflow-y:auto; }
+  .screen.active{ display:block; }
+
+  /* ---- Position (GPS) tab ---- */
+  .gps-card{
+    background: var(--surface);
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:18px;
+    text-align:center;
+  }
+  .gps-label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10px;
+    color: var(--sage);
+    text-transform:uppercase;
+    letter-spacing:1px;
+  }
+  .gps-zone{
+    font-family:'Big Shoulders Display', sans-serif;
+    font-weight:800;
+    font-size:56px;
+    line-height:1;
+    margin: 6px 0;
+  }
+  .gps-crop{
+    font-size:12px;
+    color: var(--sage);
+    margin-bottom:16px;
+  }
+  .gps-metrics{
+    display:flex;
+    justify-content:space-around;
+    padding:14px 0;
+    border-top:1px solid var(--line);
+    border-bottom:1px solid var(--line);
+  }
+  .gps-metric-val{ font-family:'IBM Plex Mono', monospace; font-size:20px; }
+  .gps-metric-name{ font-size:10px; color: var(--sage); margin-top:2px; }
+
+  .reco-card{
+    margin-top:14px;
+    padding:14px;
+    background: var(--surface-raised);
+    border-left:3px solid var(--stress);
+    font-size:13px;
+    line-height:1.5;
+    border-radius: 2px;
+    text-align:left;
+  }
+  .reco-card.ok{ border-left-color: var(--healthy); }
+  .reco-card.critical{ border-left-color: var(--critical); }
+
+  .big-action{
+    margin-top:16px;
+    width:100%;
+    padding:16px;
+    background: var(--mid);
+    color: var(--soil-dark);
+    border:none;
+    border-radius:4px;
+    font-family:'IBM Plex Sans', sans-serif;
+    font-weight:600;
+    font-size:15px;
+  }
+  .big-action:active{ background: var(--healthy); }
+  .big-action.done{ background: var(--surface-raised); color: var(--sage); }
+
+  /* ---- Map tab ---- */
+  .grid{
+    display:grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap:3px;
+    margin-top:4px;
+  }
+  .cell{
+    aspect-ratio:1;
+    border-radius:2px;
+    border:1px solid rgba(0,0,0,0.3);
+    position:relative;
+  }
+  .cell.you::after{
+    content:'';
+    position:absolute; inset:0;
+    border:2px solid var(--parchment);
+    border-radius:2px;
+  }
+  /* mode "zones homogènes" (k-means) : pas de grille visible, juste des
+     petites cellules jointives qui, ensemble, dessinent des formes
+     organiques — contrairement au mode démo qui montre une vraie grille */
+  .grid.blob{ gap:0; border-radius:4px; overflow:hidden; }
+  .grid.blob .cell{ border:none; border-radius:0; aspect-ratio:auto; }
+  .grid.blob .cell.you::after{ border-width:2px; }
+  .grid.blob .cell.tapped::after{
+    content:'';
+    position:absolute; inset:0;
+    outline:2px solid var(--parchment);
+    outline-offset:-2px;
+  }
+  .tap-info{
+    margin-top:12px;
+    padding:10px 12px;
+    background: var(--surface);
+    border-radius:3px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color: var(--sage);
+    display:none;
+  }
+  .tap-info.show{ display:block; }
+  .tap-info b{ color: var(--parchment); }
+  .legend{ display:flex; align-items:center; gap:8px; margin-top:14px; }
+  .legend-bar{ width:120px; height:8px; border-radius:2px;
+    background: linear-gradient(to right, var(--critical), var(--stress), var(--mid), var(--healthy)); }
+  .legend-text{ font-family:'IBM Plex Mono', monospace; font-size:10px; color: var(--sage); }
+
+  /* ---- Alerts tab ---- */
+  .alert-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:14px;
+    background: var(--surface);
+    border-radius:4px;
+    margin-bottom:8px;
+    border-left:3px solid var(--critical);
+  }
+  .alert-zone{ font-family:'IBM Plex Mono', monospace; font-size:16px; }
+  .alert-desc{ font-size:11px; color: var(--sage); margin-top:2px; }
+  .alert-val{ font-family:'IBM Plex Mono', monospace; font-size:18px; color: var(--critical); }
+
+  .section-label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color: var(--sage);
+    text-transform:uppercase;
+    letter-spacing:0.5px;
+    margin: 18px 0 8px 0;
+  }
+  .section-label:first-child{ margin-top:0; }
+
+  /* ---- Bottom nav ---- */
+  .navbar{
+    position:absolute;
+    bottom:0; left:0; right:0;
+    display:flex;
+    background: var(--surface);
+    border-top:1px solid var(--line);
+  }
+  .nav-btn{
+    flex:1;
+    background:transparent;
+    border:none;
+    color: var(--sage);
+    padding:12px 0 14px 0;
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:11px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:4px;
+  }
+  .nav-btn.active{ color: var(--parchment); }
+  .nav-dot{ width:6px; height:6px; border-radius:50%; background: var(--critical); position:relative; top:-16px; left:14px; display:none; }
+  .nav-dot.show{ display:block; }
+</style>
+</head>
+<body>
+<div class="phone">
+
+  <div class="offline-banner" id="offline-banner">HORS CONNEXION — DONNÉES DU 04/07 (CACHE LOCAL)</div>
+
+  <div class="topbar">
+    <div>
+      <div class="field-title">Parcelle Nord</div>
+      <div class="field-sub">Blé tendre · 12.4 ha</div>
+      <div class="source-badge demo" id="source-badge">MODE DÉMO</div>
+    </div>
+    <button class="sync-btn" id="offline-toggle">Simuler hors-ligne</button>
+  </div>
+
+  <!-- POSITION TAB -->
+  <div class="screen" id="screen-position">
+    <div class="gps-card">
+      <div class="gps-label">Vous êtes ici</div>
+      <div class="gps-zone" id="pos-zone">C4</div>
+      <div class="gps-crop">Blé tendre — stade montaison</div>
+      <div class="gps-metrics">
+        <div><div class="gps-metric-val" id="pos-ndvi">—</div><div class="gps-metric-name">NDVI</div></div>
+        <div><div class="gps-metric-val" id="pos-ndre">—</div><div class="gps-metric-name">NDRE</div></div>
+        <div><div class="gps-metric-val" id="pos-moist">—</div><div class="gps-metric-name">HUMIDITÉ</div></div>
+      </div>
+      <div class="reco-card" id="pos-reco"></div>
+      <button class="big-action" id="mark-treated">Marquer cette zone comme traitée</button>
+    </div>
+  </div>
+
+  <!-- MAP TAB -->
+  <div class="screen active" id="screen-map">
+    <div class="section-label">Carte de la parcelle</div>
+    <div class="grid" id="grid"></div>
+    <div class="legend">
+      <div class="legend-bar"></div>
+      <div class="legend-text" id="legend-text">NDVI — faible → fort</div>
+    </div>
+    <div class="tap-info" id="tap-info"></div>
+  </div>
+
+  <!-- ALERTS TAB -->
+  <div class="screen" id="screen-alerts">
+    <div class="section-label">Zones à traiter en priorité</div>
+    <div id="alerts-list"></div>
+  </div>
+
+  <div class="navbar">
+    <button class="nav-btn" data-tab="position">📍 <span>Ma position</span></button>
+    <button class="nav-btn active" data-tab="map">▦ <span>Carte</span></button>
+    <button class="nav-btn" data-tab="alerts">! <span>Alertes<div class="nav-dot show" id="nav-dot"></div></span></button>
+  </div>
+
+</div>
+
+<script>
+const COLS = 8, ROWS = 8;
+
+function noise(x, y, seed){ return (Math.sin(x*12.9898 + y*78.233 + seed) * 43758.5453) % 1; }
+function frac(v){ return v - Math.floor(v); }
+
+// URL de l'API et champ à afficher. Lancer le serveur : uvicorn src.api:app --reload --port 8000
+// Passer ?field_id=1 dans l'URL pour charger un champ réel enregistré via l'API.
+// En dev local (fichier ouvert directement, file://), on parle à l'API sur
+// localhost:8000. Une fois déployé et servi par le même serveur FastAPI que
+// l'API (voir README), le front et le back partagent le même domaine : pas
+// besoin d'URL absolue, une chaîne vide + chemin relatif suffit.
+const API_BASE = location.protocol === 'file:' ? 'http://localhost:8000' : '';
+const FIELD_ID = new URLSearchParams(location.search).get('field_id');
+const TOKEN = new URLSearchParams(location.search).get('token');
+
+const hotspots = [
+  {cx:1, cy:6, r:2.6, strength:-0.55},
+  {cx:6, cy:1, r:2, strength:-0.3},
+  {cx:4, cy:4, r:4, strength:0.15}
+];
+
+function baseValue(x, y, seed){
+  let v = 0.72;
+  hotspots.forEach(h=>{
+    const d = Math.sqrt((x-h.cx)**2 + (y-h.cy)**2);
+    v += h.strength * Math.exp(-(d*d)/(2*h.r*h.r));
+  });
+  v += (frac(noise(x, y, seed)) - 0.5) * 0.12;
+  return Math.max(0.05, Math.min(0.95, v));
+}
+
+function generateSyntheticCells(){
+  const list = [];
+  for(let y=0; y<ROWS; y++){
+    for(let x=0; x<COLS; x++){
+      list.push({
+        x, y,
+        id: String.fromCharCode(65 + y) + (x+1),
+        ndvi: baseValue(x, y, 1),
+        ndre: baseValue(x, y, 7) * 0.9 + 0.05,
+        moist: baseValue(x, y, 13) * 0.85 + 0.1
+      });
+    }
+  }
+  return list;
+}
+
+// note : plus besoin de convertir les zones API en cellules x,y — le mode
+// live utilise directement `zones` + `labelGrid` (voir loadFieldData ci-dessous)
+
+let cells = [];        // mode démo : grille legacy x,y
+let labelGrid = null;  // mode live : raster basse résolution {rows, cols, data}
+let zones = [];        // mode live : liste des zones k-means {id, ndvi, ndre, status}
+let currentCell = null;
+let isBlobMap = false;
+let dataSource = 'demo';
+
+async function loadFieldData(){
+  if(FIELD_ID && TOKEN){
+    try{
+      const res = await fetch(`${API_BASE}/fields/${FIELD_ID}/zones?method=kmeans`, {
+        headers: { 'Authorization': 'Bearer ' + TOKEN }
+      });
+      if(!res.ok) throw new Error('API a répondu ' + res.status);
+      const data = await res.json();
+
+      if(data.label_grid){
+        labelGrid = data.label_grid;
+        zones = data.zones;
+        isBlobMap = true;
+        dataSource = 'live';
+        document.querySelector('.field-title').textContent = data.field_name || 'Champ #' + FIELD_ID;
+
+        // simule la position GPS au centre du raster
+        const cr = Math.floor(labelGrid.rows/2), cc = Math.floor(labelGrid.cols/2);
+        const idx = labelGrid.data[cr][cc];
+        currentCell = idx >= 0 ? zones[idx] : zones.find(z => z.ndvi != null);
+      } else {
+        // l'API a répondu mais sans raster (ex: method=grid côté serveur) -> repli démo
+        throw new Error('Pas de raster de zones dans la réponse.');
+      }
+    } catch(err){
+      console.warn('API injoignable ou incomplète, repli en mode démo :', err.message);
+      cells = generateSyntheticCells();
+      isBlobMap = false;
+      dataSource = 'demo';
+      currentCell = cells.find(c => c.x===3 && c.y===3) || cells[0];
+    }
+  } else {
+    cells = generateSyntheticCells();
+    isBlobMap = false;
+    dataSource = 'demo';
+    currentCell = cells.find(c => c.x===3 && c.y===3) || cells[0];
+  }
+
+  const badge = document.getElementById('source-badge');
+  if(badge){
+    badge.textContent = dataSource === 'live' ? 'DONNÉES EN DIRECT — ZONES K-MEANS' : 'MODE DÉMO';
+    badge.className = 'source-badge ' + dataSource;
+  }
+}
+
+const colorStops = [
+  {t:0, c:[196,98,58]}, {t:0.4, c:[217,164,65]}, {t:0.7, c:[159,187,108]}, {t:1, c:[111,160,89]}
+];
+function lerpColor(v){
+  for(let i=0;i<colorStops.length-1;i++){
+    const a = colorStops[i], b = colorStops[i+1];
+    if(v >= a.t && v <= b.t){
+      const f = (v - a.t) / (b.t - a.t);
+      const c = a.c.map((ch,i)=> Math.round(ch + (b.c[i]-ch)*f));
+      return `rgb(${c[0]},${c[1]},${c[2]})`;
+    }
+  }
+  return `rgb(${colorStops[colorStops.length-1].c.join(',')})`;
+}
+
+function recommendationFor(cell){
+  const v = cell.ndvi;
+  // en mode live, le statut est déjà calculé côté serveur (zoning.py) ;
+  // en mode démo, on le recalcule avec les mêmes seuils par défaut
+  const status = cell.status || (v < 0.35 ? 'critical' : v < 0.55 ? 'warning' : 'ok');
+  if(status === 'critical') return {text:'Végétation clairsemée. Vérifiez le drainage avant tout apport.', level:'critical'};
+  if(status === 'warning') return {text:'Vigueur en dessous de la moyenne de la parcelle. À surveiller.', level:'warning'};
+  return {text:'Vigueur satisfaisante, aucune action requise ici.', level:'ok'};
+}
+
+// ---- render position tab ----
+function renderPosition(){
+  document.getElementById('pos-zone').textContent = currentCell.id;
+  document.getElementById('pos-ndvi').textContent = currentCell.ndvi.toFixed(2);
+  document.getElementById('pos-ndre').textContent = currentCell.ndre.toFixed(2);
+  document.getElementById('pos-moist').textContent = currentCell.moist != null ? (currentCell.moist*100).toFixed(0) + '%' : '—';
+  const reco = recommendationFor(currentCell);
+  const recoEl = document.getElementById('pos-reco');
+  recoEl.textContent = reco.text;
+  recoEl.className = 'reco-card' + (reco.level==='critical' ? ' critical' : reco.level==='ok' ? ' ok' : '');
+}
+
+// ---- render map tab ----
+function renderMap(){
+  const gridEl = document.getElementById('grid');
+  gridEl.innerHTML = '';
+  gridEl.classList.toggle('blob', isBlobMap);
+
+  if(isBlobMap){
+    gridEl.style.gridTemplateColumns = `repeat(${labelGrid.cols}, 1fr)`;
+    const cr = Math.floor(labelGrid.rows/2), cc = Math.floor(labelGrid.cols/2);
+
+    labelGrid.data.forEach((row, r)=>{
+      row.forEach((idx, c)=>{
+        const div = document.createElement('div');
+        const zone = idx >= 0 ? zones[idx] : null;
+        div.className = 'cell' + (r===cr && c===cc ? ' you' : '');
+        div.style.background = zone && zone.ndvi != null ? lerpColor(zone.ndvi) : 'transparent';
+        if(zone){
+          div.title = zone.id;
+          div.addEventListener('click', ()=> onMapTap(zone, div));
+        }
+        gridEl.appendChild(div);
+      });
+    });
+  } else {
+    gridEl.style.gridTemplateColumns = `repeat(${COLS}, 1fr)`;
+    cells.forEach(cell=>{
+      const div = document.createElement('div');
+      div.className = 'cell' + (cell===currentCell ? ' you' : '');
+      div.style.background = lerpColor(cell.ndvi);
+      div.title = cell.id;
+      div.addEventListener('click', ()=> onMapTap(cell, div));
+      gridEl.appendChild(div);
+    });
+  }
+}
+
+function onMapTap(zone, el){
+  document.querySelectorAll('.cell.tapped').forEach(c=>c.classList.remove('tapped'));
+  el.classList.add('tapped');
+  const info = document.getElementById('tap-info');
+  const reco = recommendationFor(zone);
+  const ndreTxt = zone.ndre != null ? zone.ndre.toFixed(2) : '—';
+  info.innerHTML = `<b>${zone.id}</b> — NDVI ${zone.ndvi.toFixed(2)} · NDRE ${ndreTxt}<br>${reco.text}`;
+  info.classList.add('show');
+}
+
+// ---- render alerts tab ----
+function renderAlerts(){
+  const alertsEl = document.getElementById('alerts-list');
+  alertsEl.innerHTML = '';
+  const source = isBlobMap ? zones.filter(z => z.ndvi != null) : cells;
+  const worst = [...source].sort((a,b)=> a.ndvi-b.ndvi).slice(0,5);
+  worst.forEach(c=>{
+    const row = document.createElement('div');
+    row.className = 'alert-row';
+    row.innerHTML = `
+      <div>
+        <div class="alert-zone">${c.id}</div>
+        <div class="alert-desc">${recommendationFor(c).text}</div>
+      </div>
+      <div class="alert-val">${c.ndvi.toFixed(2)}</div>
+    `;
+    alertsEl.appendChild(row);
+  });
+}
+
+loadFieldData().then(()=>{
+  renderPosition();
+  renderMap();
+  renderAlerts();
+});
+
+// ---- tabs ----
+document.querySelectorAll('.nav-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('screen-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ---- offline toggle ----
+const offlineBanner = document.getElementById('offline-banner');
+const offlineToggle = document.getElementById('offline-toggle');
+let offline = false;
+offlineToggle.addEventListener('click', ()=>{
+  offline = !offline;
+  offlineBanner.classList.toggle('show', offline);
+  offlineToggle.textContent = offline ? 'Revenir en ligne' : 'Simuler hors-ligne';
+});
+
+// ---- mark treated ----
+const markBtn = document.getElementById('mark-treated');
+markBtn.addEventListener('click', ()=>{
+  markBtn.textContent = 'Zone marquée comme traitée ✓';
+  markBtn.classList.add('done');
+});
+
+// enregistrement du service worker (condition d'installabilité PWA sur Android/Chrome)
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/service-worker.js").catch(err =>
+    console.warn("Service worker non enregistré (normal en dev file:// ou hors HTTPS) :", err.message)
+  );
+}
+</script>
+</body>
+</html>

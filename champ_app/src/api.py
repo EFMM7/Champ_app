@@ -8,6 +8,7 @@ Documentation interactive générée automatiquement : http://localhost:8000/doc
 """
 
 import os
+from datetime import date
 from pathlib import Path
 
 from contextlib import asynccontextmanager
@@ -20,9 +21,12 @@ from pydantic import BaseModel, EmailStr, field_validator
 from src import tokens as tokens_module
 from src.db import init_db
 from src.auth import register_user, authenticate_user, AuthError
+from src.analyses import save_analysis, list_analyses
+from src.treatments import save_treatment, list_treatments, TreatmentError
 from src.fields import register_field, list_fields, get_field, FieldError, CROPS_DISPONIBLES
 from src.config import load_environment
 from src.demo_data import generate_synthetic_bands
+from src.fetch_sentinel import SentinelHubConfigError, fetch_field_bands
 from src.main import run_pipeline
 from src.tokens import is_production_environment
 
@@ -143,6 +147,24 @@ class ErrorResponse(BaseModel):
     detail: str
 
 
+class AnalysisRequest(BaseModel):
+    source: str = "synthetic"
+    acquisition_date: date | None = None
+    resolution: int = 10
+    method: str = "grid"
+    n_rows: int = 8
+    n_cols: int = 12
+    n_zones: int = 6
+    critical_threshold: float | None = None
+    warning_threshold: float | None = None
+
+
+class ZoneTreatmentRequest(BaseModel):
+    analysis_id: int
+    zone_id: str
+    note: str | None = None
+
+
 # ---------- routes ----------
 
 @app.post("/auth/register", response_model=AuthResponse)
@@ -204,6 +226,92 @@ def api_get_field(field_id: int, user_id: int = Depends(get_current_user_id)):
     if field["user_id"] != user_id:
         _raise_api_error(404, "not_found", "Champ introuvable.")
     return field
+
+
+def _get_owned_field(field_id: int, user_id: int) -> dict:
+    field = get_field(get_db_path(), field_id)
+    if field is None or field["user_id"] != user_id:
+        _raise_api_error(404, "not_found", "Champ introuvable.")
+    return field
+
+
+@app.post("/fields/{field_id}/analyses")
+def api_create_analysis(
+    field_id: int,
+    payload: AnalysisRequest,
+    user_id: int = Depends(get_current_user_id),
+):
+    field = _get_owned_field(field_id, user_id)
+    if payload.source not in ("synthetic", "sentinel"):
+        _raise_api_error(422, "validation_error", "source doit être 'synthetic' ou 'sentinel'.")
+    if payload.method not in ("grid", "kmeans"):
+        _raise_api_error(422, "validation_error", "method doit être 'grid' ou 'kmeans'.")
+    if payload.n_rows < 1 or payload.n_cols < 1 or payload.n_zones < 1 or payload.resolution < 1:
+        _raise_api_error(422, "validation_error", "Les dimensions de zonage doivent être des entiers positifs.")
+
+    thresholds = {
+        "critical": payload.critical_threshold,
+        "warning": payload.warning_threshold,
+    }
+    if payload.source == "synthetic":
+        bands = generate_synthetic_bands(seed=field_id)
+    else:
+        bbox = (
+            field["bbox_min_lon"],
+            field["bbox_min_lat"],
+            field["bbox_max_lon"],
+            field["bbox_max_lat"],
+        )
+        try:
+            bands = fetch_field_bands(bbox, date=payload.acquisition_date, resolution=payload.resolution)
+        except SentinelHubConfigError as exc:
+            _raise_api_error(503, "sentinel_configuration_error", str(exc))
+        except Exception as exc:
+            _raise_api_error(502, "sentinel_request_error", f"Impossible de récupérer les données Sentinel : {exc}")
+    result, _ = run_pipeline(
+        bands,
+        n_rows=payload.n_rows,
+        n_cols=payload.n_cols,
+        method=payload.method,
+        n_zones=payload.n_zones,
+        thresholds=thresholds,
+    )
+    result["field_id"] = field_id
+    return save_analysis(
+        get_db_path(),
+        field_id,
+        source=payload.source,
+        method=payload.method,
+        parameters=payload.model_dump(mode="json"),
+        result=result,
+    )
+
+
+@app.get("/fields/{field_id}/analyses")
+def api_list_analyses(field_id: int, user_id: int = Depends(get_current_user_id)):
+    _get_owned_field(field_id, user_id)
+    return list_analyses(get_db_path(), field_id)
+
+
+@app.post("/fields/{field_id}/treatments")
+def api_create_treatment(
+    field_id: int,
+    payload: ZoneTreatmentRequest,
+    user_id: int = Depends(get_current_user_id),
+):
+    _get_owned_field(field_id, user_id)
+    try:
+        return save_treatment(
+            get_db_path(), field_id, payload.analysis_id, payload.zone_id, payload.note,
+        )
+    except TreatmentError as exc:
+        _raise_api_error(400, "validation_error", str(exc))
+
+
+@app.get("/fields/{field_id}/treatments")
+def api_list_treatments(field_id: int, user_id: int = Depends(get_current_user_id)):
+    _get_owned_field(field_id, user_id)
+    return list_treatments(get_db_path(), field_id)
 
 
 @app.get("/fields/{field_id}/zones")

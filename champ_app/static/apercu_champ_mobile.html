@@ -100,6 +100,9 @@
     padding:6px 9px;
     border-radius:2px;
   }
+  .topbar-actions{ display:flex; flex-direction:column; align-items:flex-end; gap:7px; }
+  .analysis-btn{ border-color:var(--mid); color:var(--parchment); }
+  .analysis-btn:disabled{ border-color:var(--line); color:var(--sage-dim); }
 
   .screen{ display:none; flex:1; padding:16px 18px 90px 18px; overflow-y:auto; }
   .screen.active{ display:block; }
@@ -279,7 +282,10 @@
       <div class="field-sub">Blé tendre · 12.4 ha</div>
       <div class="source-badge demo" id="source-badge">MODE DÉMO</div>
     </div>
-    <button class="sync-btn" id="offline-toggle">Simuler hors-ligne</button>
+    <div class="topbar-actions">
+      <button class="sync-btn analysis-btn" id="refresh-analysis">Actualiser l'analyse</button>
+      <button class="sync-btn" id="offline-toggle">Simuler hors-ligne</button>
+    </div>
   </div>
 
   <!-- POSITION TAB -->
@@ -337,7 +343,18 @@ function frac(v){ return v - Math.floor(v); }
 // besoin d'URL absolue, une chaîne vide + chemin relatif suffit.
 const API_BASE = location.protocol === 'file:' ? 'http://localhost:8000' : '';
 const FIELD_ID = new URLSearchParams(location.search).get('field_id');
-const TOKEN = new URLSearchParams(location.search).get('token');
+const SESSION_KEY = 'champ_app_session';
+
+function loadStoredToken(){
+  try{
+    const session = JSON.parse(localStorage.getItem(SESSION_KEY));
+    return session && typeof session.token === 'string' ? session.token : null;
+  } catch(err){
+    return null;
+  }
+}
+
+const TOKEN = loadStoredToken();
 
 const hotspots = [
   {cx:1, cy:6, r:2.6, strength:-0.55},
@@ -378,51 +395,97 @@ let cells = [];        // mode démo : grille legacy x,y
 let labelGrid = null;  // mode live : raster basse résolution {rows, cols, data}
 let zones = [];        // mode live : liste des zones k-means {id, ndvi, ndre, status}
 let currentCell = null;
+let currentAnalysisId = null;
 let isBlobMap = false;
 let dataSource = 'demo';
+
+function useAnalysis(analysis){
+  const data = analysis.result;
+  if(!data.label_grid) throw new Error('Cette analyse ne contient pas de carte K-means.');
+  labelGrid = data.label_grid;
+  zones = data.zones;
+  isBlobMap = true;
+  dataSource = analysis.source;
+  const cr = Math.floor(labelGrid.rows/2), cc = Math.floor(labelGrid.cols/2);
+  const idx = labelGrid.data[cr][cc];
+  currentCell = idx >= 0 ? zones[idx] : zones.find(z => z.ndvi != null);
+  currentAnalysisId = analysis.id;
+}
+
+function useDemoData(){
+  cells = generateSyntheticCells();
+  isBlobMap = false;
+  dataSource = 'demo';
+  currentAnalysisId = null;
+  currentCell = cells.find(c => c.x===3 && c.y===3) || cells[0];
+}
+
+function updateSourceBadge(){
+  const badge = document.getElementById('source-badge');
+  if(!badge) return;
+  const isSentinel = dataSource === 'sentinel';
+  badge.textContent = isSentinel ? 'DONNÉES SENTINEL' : dataSource === 'synthetic' ? 'ANALYSE DE DÉMO' : 'MODE DÉMO';
+  badge.className = 'source-badge ' + (dataSource === 'demo' ? 'demo' : 'live');
+}
 
 async function loadFieldData(){
   if(FIELD_ID && TOKEN){
     try{
-      const res = await fetch(`${API_BASE}/fields/${FIELD_ID}/zones?method=kmeans`, {
-        headers: { 'Authorization': 'Bearer ' + TOKEN }
-      });
-      if(!res.ok) throw new Error('API a répondu ' + res.status);
-      const data = await res.json();
+      const [fieldRes, analysesRes] = await Promise.all([
+        fetch(`${API_BASE}/fields/${FIELD_ID}`, { headers: { 'Authorization': 'Bearer ' + TOKEN } }),
+        fetch(`${API_BASE}/fields/${FIELD_ID}/analyses`, { headers: { 'Authorization': 'Bearer ' + TOKEN } })
+      ]);
+      if(!fieldRes.ok || !analysesRes.ok) throw new Error('API a répondu ' + (fieldRes.ok ? analysesRes.status : fieldRes.status));
+      const field = await fieldRes.json();
+      const analyses = await analysesRes.json();
+      document.querySelector('.field-title').textContent = field.name;
+      document.querySelector('.field-sub').textContent = `${field.crop} · ${field.area_ha} ha`;
 
-      if(data.label_grid){
-        labelGrid = data.label_grid;
-        zones = data.zones;
-        isBlobMap = true;
-        dataSource = 'live';
-        document.querySelector('.field-title').textContent = data.field_name || 'Champ #' + FIELD_ID;
-
-        // simule la position GPS au centre du raster
-        const cr = Math.floor(labelGrid.rows/2), cc = Math.floor(labelGrid.cols/2);
-        const idx = labelGrid.data[cr][cc];
-        currentCell = idx >= 0 ? zones[idx] : zones.find(z => z.ndvi != null);
+      const latestMapAnalysis = analyses.find(analysis => analysis.result && analysis.result.label_grid);
+      if(latestMapAnalysis){
+        useAnalysis(latestMapAnalysis);
       } else {
-        // l'API a répondu mais sans raster (ex: method=grid côté serveur) -> repli démo
-        throw new Error('Pas de raster de zones dans la réponse.');
+        useDemoData();
       }
     } catch(err){
-      console.warn('API injoignable ou incomplète, repli en mode démo :', err.message);
-      cells = generateSyntheticCells();
-      isBlobMap = false;
-      dataSource = 'demo';
-      currentCell = cells.find(c => c.x===3 && c.y===3) || cells[0];
+      console.warn('API injoignable ou historique incomplet, repli en mode démo :', err.message);
+      useDemoData();
     }
   } else {
-    cells = generateSyntheticCells();
-    isBlobMap = false;
-    dataSource = 'demo';
-    currentCell = cells.find(c => c.x===3 && c.y===3) || cells[0];
+    useDemoData();
   }
 
-  const badge = document.getElementById('source-badge');
-  if(badge){
-    badge.textContent = dataSource === 'live' ? 'DONNÉES EN DIRECT — ZONES K-MEANS' : 'MODE DÉMO';
-    badge.className = 'source-badge ' + dataSource;
+  updateSourceBadge();
+}
+
+async function refreshAnalysis(){
+  if(!FIELD_ID || !TOKEN){
+    alert('Connectez-vous puis ouvrez une parcelle pour lancer une analyse.');
+    return;
+  }
+
+  const button = document.getElementById('refresh-analysis');
+  button.disabled = true;
+  button.textContent = 'Analyse en cours…';
+  try{
+    const res = await fetch(`${API_BASE}/fields/${FIELD_ID}/analyses`, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + TOKEN }
+        , 'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ source: 'synthetic', method: 'kmeans', n_zones: 6 })
+    });
+    if(!res.ok) throw new Error('API a répondu ' + res.status);
+    useAnalysis(await res.json());
+    updateSourceBadge();
+    renderPosition();
+    renderMap();
+    renderAlerts();
+  } catch(err){
+    alert("Impossible de lancer l'analyse : " + err.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = "Actualiser l'analyse";
   }
 }
 
@@ -535,6 +598,8 @@ loadFieldData().then(()=>{
   renderAlerts();
 });
 
+document.getElementById('refresh-analysis').addEventListener('click', refreshAnalysis);
+
 // ---- tabs ----
 document.querySelectorAll('.nav-btn').forEach(btn=>{
   btn.addEventListener('click', ()=>{
@@ -557,9 +622,31 @@ offlineToggle.addEventListener('click', ()=>{
 
 // ---- mark treated ----
 const markBtn = document.getElementById('mark-treated');
-markBtn.addEventListener('click', ()=>{
-  markBtn.textContent = 'Zone marquée comme traitée ✓';
-  markBtn.classList.add('done');
+markBtn.addEventListener('click', async ()=>{
+  if(!FIELD_ID || !TOKEN || !currentAnalysisId){
+    alert('Lancez d’abord une analyse enregistrée pour confirmer un traitement.');
+    return;
+  }
+
+  markBtn.disabled = true;
+  markBtn.textContent = 'Enregistrement…';
+  try{
+    const res = await fetch(`${API_BASE}/fields/${FIELD_ID}/treatments`, {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + TOKEN,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ analysis_id: currentAnalysisId, zone_id: currentCell.id })
+    });
+    if(!res.ok) throw new Error('API a répondu ' + res.status);
+    markBtn.textContent = 'Zone marquée comme traitée ✓';
+    markBtn.classList.add('done');
+  } catch(err){
+    alert('Impossible d’enregistrer le traitement : ' + err.message);
+    markBtn.disabled = false;
+    markBtn.textContent = 'Marquer cette zone comme traitée';
+  }
 });
 
 // enregistrement du service worker (condition d'installabilité PWA sur Android/Chrome)

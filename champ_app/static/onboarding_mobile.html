@@ -451,7 +451,7 @@ async function enterFieldsList(){
     fields.forEach(f=>{
       const a = document.createElement('a');
       a.className = 'field-row';
-      a.href = `apercu_champ_mobile.html?field_id=${f.id}&token=${state.token}`;
+      a.href = `apercu_champ_mobile.html?field_id=${f.id}`;
       a.target = '_blank';
       a.innerHTML = `<div class="field-row-name">${f.name}</div><div class="field-row-meta">${f.crop} · ${f.area_ha} ha${f.sowing_date ? ' · semé le '+f.sowing_date : ''}</div>`;
       listEl.appendChild(a);

@@ -32,6 +32,31 @@ CREATE TABLE IF NOT EXISTS fields (
     area_ha REAL NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS analyses (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    field_id INTEGER NOT NULL REFERENCES fields(id) ON DELETE CASCADE,
+    source TEXT NOT NULL,
+    method TEXT NOT NULL,
+    parameters_json TEXT NOT NULL,
+    result_json TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_analyses_field_created_at
+ON analyses(field_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS zone_treatments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    field_id INTEGER NOT NULL REFERENCES fields(id) ON DELETE CASCADE,
+    analysis_id INTEGER NOT NULL REFERENCES analyses(id) ON DELETE CASCADE,
+    zone_id TEXT NOT NULL,
+    note TEXT,
+    treated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_zone_treatments_field_treated_at
+ON zone_treatments(field_id, treated_at DESC);
 """
 
 

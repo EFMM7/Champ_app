@@ -83,10 +83,39 @@ Endpoints disponibles :
 | POST | `/auth/login` | non | Se connecter, renvoie un token JWT et sa durée de validité |
 | POST | `/fields` | oui | Enregistrer un champ (rattaché à l'utilisateur du token) |
 | GET | `/fields` | oui | Lister les champs de l'utilisateur du token |
+| POST | `/fields/{field_id}/analyses` | oui | Lancer et enregistrer une analyse de zones (démo ou Sentinel) |
+| GET | `/fields/{field_id}/analyses` | oui | Consulter l'historique des analyses du champ |
+| POST | `/fields/{field_id}/treatments` | oui | Enregistrer le traitement d'une zone d'analyse |
+| GET | `/fields/{field_id}/treatments` | oui | Consulter les traitements enregistrés du champ |
 | GET | `/fields/{field_id}/zones` | oui | Zones NDVI/NDRE d'un champ (`?method=grid` ou `kmeans`, avec `n_rows`, `n_cols`, `n_zones` optionnels, 404 si pas le sien) |
 | GET | `/crops` | non | Liste des cultures reconnues |
 
 L'authentification se fait via l'en-tête `Authorization: Bearer <token>`, token obtenu à l'inscription ou la connexion.
+
+Une analyse est maintenant conservée avec sa date, ses paramètres de zonage
+et son résultat. `POST /fields/{field_id}/analyses` accepte les mêmes options
+de zonage que la route `/zones` (`method`, `n_rows`, `n_cols`, `n_zones`,
+`critical_threshold`, `warning_threshold`). La source est explicite :
+`synthetic` par défaut pour la démo, ou `sentinel` pour une récupération
+réelle avec `SH_CLIENT_ID` et `SH_CLIENT_SECRET`. Les options `acquisition_date`
+(`YYYY-MM-DD`) et `resolution` (mètres, 10 par défaut) sont disponibles en
+mode Sentinel ; une erreur de récupération est renvoyée sans substituer de
+données de démo.
+
+L'écran `onboarding_mobile.html` ouvre `apercu_champ_mobile.html` pour une
+parcelle connectée. Cet écran charge en priorité la dernière analyse K-means
+enregistrée, puis le bouton **Actualiser l'analyse** crée une nouvelle analyse
+de démonstration et rafraîchit la carte. L'intégration d'une action utilisateur
+pour lancer une analyse Sentinel reste à concevoir avant d'exposer cette option
+dans l'interface.
+
+Le bouton **Marquer cette zone comme traitée** enregistre désormais la zone et
+l'analyse affichée. Il n'est disponible qu'après le chargement d'une analyse
+persistée, afin de conserver une trace fiable de l'intervention.
+
+La session mobile est conservée dans `localStorage` et le token JWT n'est pas
+placé dans l'URL de la parcelle, afin qu'il ne soit pas exposé par l'historique,
+les journaux ou un partage de lien.
 
 **Tester l'API sans lancer de serveur (TestClient)** :
 ```bash

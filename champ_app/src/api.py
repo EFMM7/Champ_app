@@ -8,15 +8,21 @@ Documentation interactive générée automatiquement : http://localhost:8000/doc
 """
 
 import os
+import time
+import uuid
 from datetime import date
 from pathlib import Path
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Depends, Header
+from fastapi import FastAPI, HTTPException, Depends, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
+from slowapi import Limiter
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
 from src import tokens as tokens_module
 from src.db import init_db
@@ -27,10 +33,13 @@ from src.fields import register_field, list_fields, get_field, FieldError, CROPS
 from src.config import load_environment
 from src.demo_data import generate_synthetic_bands
 from src.fetch_sentinel import SentinelHubConfigError, fetch_field_bands
+from src.logging_config import setup_logging, get_logger
 from src.main import run_pipeline
 from src.tokens import is_production_environment
 
 load_environment()
+setup_logging()
+logger = get_logger("champ_app")
 
 DB_PATH = Path(__file__).resolve().parent.parent / "output" / "app.db"
 
@@ -55,6 +64,20 @@ def get_allowed_origins() -> list[str]:
     ]
 
 
+def get_auth_rate_limit() -> str:
+    """Limite de requêtes sur les routes d'authentification (protection brute-force).
+    Format slowapi, ex: '10/minute'. Configurable via AUTH_RATE_LIMIT."""
+    return os.environ.get("AUTH_RATE_LIMIT", "10/minute")
+
+
+limiter = Limiter(key_func=get_remote_address)
+
+
+async def _handle_rate_limit_exceeded(request: Request, exc: RateLimitExceeded) -> JSONResponse:
+    detail = "Trop de tentatives, réessayez plus tard."
+    return JSONResponse(status_code=429, content={"error": "rate_limited", "detail": detail, "message": detail})
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     db_path = get_db_path()
@@ -66,6 +89,48 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Suivi de champs — API", lifespan=lifespan)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _handle_rate_limit_exceeded)
+
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Journalise chaque requête (méthode, chemin, statut, durée) avec un
+    request_id unique, propagé aussi dans l'en-tête de réponse X-Request-ID
+    pour pouvoir corréler un incident signalé par un utilisateur avec les logs."""
+    request_id = str(uuid.uuid4())
+    request.state.request_id = request_id
+    start = time.perf_counter()
+
+    try:
+        response = await call_next(request)
+    except Exception:
+        duration_ms = round((time.perf_counter() - start) * 1000, 2)
+        logger.exception(
+            "requête non gérée (exception)",
+            extra={
+                "request_id": request_id,
+                "method": request.method,
+                "path": request.url.path,
+                "duration_ms": duration_ms,
+            },
+        )
+        raise
+
+    duration_ms = round((time.perf_counter() - start) * 1000, 2)
+    log = logger.warning if response.status_code >= 400 else logger.info
+    log(
+        "requête terminée",
+        extra={
+            "request_id": request_id,
+            "method": request.method,
+            "path": request.url.path,
+            "status_code": response.status_code,
+            "duration_ms": duration_ms,
+        },
+    )
+    response.headers["X-Request-ID"] = request_id
+    return response
 
 
 def _raise_api_error(status_code: int, error: str, detail: str) -> None:
@@ -107,8 +172,8 @@ def api_health():
 # ---------- schémas de requête/réponse ----------
 
 class RegisterRequest(BaseModel):
-    email: str
-    password: str
+    email: str = Field(max_length=254)
+    password: str = Field(max_length=128)
 
 
 class AuthResponse(BaseModel):
@@ -119,11 +184,11 @@ class AuthResponse(BaseModel):
 
 
 class FieldCreateRequest(BaseModel):
-    name: str
-    crop: str
+    name: str = Field(min_length=1, max_length=200)
+    crop: str = Field(max_length=100)
     bbox: tuple[float, float, float, float] | None = None  # min_lon, min_lat, max_lon, max_lat
     polygon: list[tuple[float, float]] | None = None  # [(lon, lat), ...], prime sur bbox si fourni
-    sowing_date: str | None = None
+    sowing_date: str | None = Field(default=None, max_length=32)
 
     @field_validator("crop")
     @classmethod
@@ -161,14 +226,15 @@ class AnalysisRequest(BaseModel):
 
 class ZoneTreatmentRequest(BaseModel):
     analysis_id: int
-    zone_id: str
-    note: str | None = None
+    zone_id: str = Field(max_length=16)
+    note: str | None = Field(default=None, max_length=1000)
 
 
 # ---------- routes ----------
 
 @app.post("/auth/register", response_model=AuthResponse)
-def api_register(payload: RegisterRequest):
+@limiter.limit(get_auth_rate_limit)
+def api_register(request: Request, payload: RegisterRequest):
     email = payload.email.strip().lower()
     if not email or "@" not in email or "." not in email.split("@", 1)[1]:
         _raise_api_error(422, "validation_error", "Adresse email invalide.")
@@ -176,7 +242,15 @@ def api_register(payload: RegisterRequest):
     try:
         user_id = register_user(get_db_path(), email, payload.password)
     except AuthError as e:
+        logger.warning(
+            "échec d'inscription",
+            extra={"request_id": getattr(request.state, "request_id", None), "email": email, "reason": str(e)},
+        )
         _raise_api_error(400, "auth_error", str(e))
+    logger.info(
+        "inscription réussie",
+        extra={"request_id": getattr(request.state, "request_id", None), "user_id": user_id},
+    )
     return {
         "user_id": user_id,
         "access_token": tokens_module.create_access_token(user_id),
@@ -185,11 +259,25 @@ def api_register(payload: RegisterRequest):
 
 
 @app.post("/auth/login", response_model=AuthResponse)
-def api_login(payload: RegisterRequest):
+@limiter.limit(get_auth_rate_limit)
+def api_login(request: Request, payload: RegisterRequest):
     try:
         user_id = authenticate_user(get_db_path(), payload.email, payload.password)
     except AuthError as e:
+        # utile pour repérer une attaque par force brute dans les logs, sans jamais loguer le mot de passe
+        logger.warning(
+            "échec de connexion",
+            extra={
+                "request_id": getattr(request.state, "request_id", None),
+                "email": payload.email.strip().lower(),
+                "client_ip": get_remote_address(request),
+            },
+        )
         _raise_api_error(401, "auth_error", str(e))
+    logger.info(
+        "connexion réussie",
+        extra={"request_id": getattr(request.state, "request_id", None), "user_id": user_id},
+    )
     return {
         "user_id": user_id,
         "access_token": tokens_module.create_access_token(user_id),
@@ -207,8 +295,10 @@ def api_create_field(payload: FieldCreateRequest, user_id: int = Depends(get_cur
             bbox=payload.bbox, sowing_date=payload.sowing_date, polygon=payload.polygon,
         )
     except FieldError as e:
+        logger.warning("échec de création de champ", extra={"user_id": user_id, "reason": str(e)})
         _raise_api_error(400, "validation_error", str(e))
 
+    logger.info("champ créé", extra={"user_id": user_id, "field_id": field_id, "crop": payload.crop})
     field = get_field(get_db_path(), field_id)
     return field
 
@@ -271,8 +361,10 @@ def api_create_analysis(
         try:
             bands = fetch_field_bands(bbox, date=payload.acquisition_date, resolution=payload.resolution)
         except SentinelHubConfigError as exc:
+            logger.error("Sentinel Hub mal configuré", extra={"field_id": field_id, "reason": str(exc)})
             _raise_api_error(503, "sentinel_configuration_error", str(exc))
         except Exception as exc:
+            logger.error("échec de récupération Sentinel", extra={"field_id": field_id, "reason": str(exc)})
             _raise_api_error(502, "sentinel_request_error", f"Impossible de récupérer les données Sentinel : {exc}")
     try:
         result, _ = run_pipeline(
@@ -284,12 +376,25 @@ def api_create_analysis(
             thresholds=thresholds,
         )
     except Exception as exc:
+        logger.error(
+            "échec du calcul de l'analyse",
+            extra={"field_id": field_id, "method": payload.method, "source": payload.source, "reason": str(exc)},
+        )
         _raise_api_error(
             422,
             "analysis_error",
             f"Impossible de calculer l'analyse (image probablement inexploitable, ex: entièrement masquée) : {exc}",
         )
     result["field_id"] = field_id
+    logger.info(
+        "analyse créée",
+        extra={
+            "field_id": field_id,
+            "source": payload.source,
+            "method": payload.method,
+            "alert_count": result.get("alert_count"),
+        },
+    )
     return save_analysis(
         get_db_path(),
         field_id,
@@ -314,11 +419,20 @@ def api_create_treatment(
 ):
     _get_owned_field(field_id, user_id)
     try:
-        return save_treatment(
+        treatment = save_treatment(
             get_db_path(), field_id, payload.analysis_id, payload.zone_id, payload.note,
         )
     except TreatmentError as exc:
+        logger.warning(
+            "échec d'enregistrement de traitement",
+            extra={"field_id": field_id, "analysis_id": payload.analysis_id, "zone_id": payload.zone_id, "reason": str(exc)},
+        )
         _raise_api_error(400, "validation_error", str(exc))
+    logger.info(
+        "traitement enregistré",
+        extra={"field_id": field_id, "analysis_id": payload.analysis_id, "zone_id": payload.zone_id},
+    )
+    return treatment
 
 
 @app.get("/fields/{field_id}/treatments")

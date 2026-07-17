@@ -1,5 +1,6 @@
 """Persistence for treatment confirmations recorded against analysis zones."""
 
+import json
 from pathlib import Path
 
 from src.db import get_connection
@@ -23,11 +24,16 @@ def save_treatment(
     conn = get_connection(db_path)
     try:
         analysis = conn.execute(
-            "SELECT id FROM analyses WHERE id = ? AND field_id = ?",
+            "SELECT id, result_json FROM analyses WHERE id = ? AND field_id = ?",
             (analysis_id, field_id),
         ).fetchone()
         if analysis is None:
             raise TreatmentError("Analyse introuvable pour cette parcelle.")
+
+        result = json.loads(analysis["result_json"])
+        known_zone_ids = {zone["id"] for zone in result.get("zones", [])}
+        if normalized_zone_id not in known_zone_ids:
+            raise TreatmentError("Cette zone n'existe pas dans le résultat de cette analyse.")
 
         cursor = conn.execute(
             """INSERT INTO zone_treatments (field_id, analysis_id, zone_id, note)

@@ -7,5 +7,6 @@ email-validator
 httpx
 python-jose[cryptography]
 scikit-learn
+slowapi
 # optionnel : uniquement pour régénérer les icônes (generate_icons.py)
 pillow

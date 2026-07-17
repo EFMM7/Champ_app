@@ -8,6 +8,7 @@ et suffisamment robuste pour un MVP.
 """
 
 import hashlib
+import hmac
 import os
 import re
 import sqlite3
@@ -17,6 +18,8 @@ from src.db import get_connection
 
 PBKDF2_ITERATIONS = 260_000
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+MAX_EMAIL_LENGTH = 254  # limite standard RFC 5321
+MAX_PASSWORD_LENGTH = 128  # évite un coût PBKDF2 excessif sur une entrée très longue
 
 
 class AuthError(Exception):
@@ -37,8 +40,12 @@ def register_user(db_path: str | Path, email: str, password: str) -> int:
 
     if not EMAIL_RE.match(email):
         raise AuthError("Adresse email invalide.")
+    if len(email) > MAX_EMAIL_LENGTH:
+        raise AuthError("Adresse email trop longue.")
     if len(password) < 8:
         raise AuthError("Le mot de passe doit contenir au moins 8 caractères.")
+    if len(password) > MAX_PASSWORD_LENGTH:
+        raise AuthError(f"Le mot de passe ne peut pas dépasser {MAX_PASSWORD_LENGTH} caractères.")
 
     password_hash, salt = _hash_password(password)
 
@@ -68,7 +75,8 @@ def authenticate_user(db_path: str | Path, email: str, password: str) -> int:
             raise AuthError("Email ou mot de passe incorrect.")
 
         computed_hash, _ = _hash_password(password, bytes.fromhex(row["salt"]))
-        if computed_hash != row["password_hash"]:
+        # comparaison en temps constant pour éviter une attaque par mesure de timing
+        if not hmac.compare_digest(computed_hash, row["password_hash"]):
             raise AuthError("Email ou mot de passe incorrect.")
 
         return row["id"]

@@ -245,10 +245,19 @@ majeure tant que le cœur métier n'est pas pleinement stabilisé.
 
 1. **Valider le cœur du flux** sur des parcelles réelles ou des données de
    démo plus proches du terrain, puis ajuster les seuils de zonage si besoin.
-2. **Renforcer la sécurité d'exploitation** : `JWT_SECRET_KEY` obligatoire en
-   environnement réel, CORS restreint, secrets gérés proprement.
-3. **Ajouter des tests métier de plus en plus ciblés** sur la géométrie,
-   l'authentification et les sorties de traitement.
+2. ✅ **Sécurité d'exploitation renforcée** : `JWT_SECRET_KEY` obligatoire en
+   environnement réel, CORS restreint par défaut, secrets gérés via `.env`
+   (non versionné), bornes hautes sur les paramètres de zonage (anti-DoS),
+   comparaison de mot de passe en temps constant, limites de taille sur les
+   champs texte, rate limiting sur `/auth/login` et `/auth/register`.
+   Reste à faire : vérification d'email à l'inscription (nécessite un
+   service d'envoi externe type SendGrid/Mailgun — reporté volontairement).
+3. ✅ **Tests métier ciblés** ajoutés sur la géométrie (bbox/polygone
+   invalides, surface minimale, culture inconnue), l'authentification
+   (casse/espaces sur l'email, mot de passe trop long, énumération de
+   comptes) et les sorties de traitement (un `zone_id` doit désormais
+   correspondre à une zone réellement présente dans le résultat de
+   l'analyse — c'était un trou de validation avant cette itération).
 4. **Préparer une évolution plus robuste si l'usage devient concret** : base de
    données plus solide, logs, monitoring, puis seulement après la stabilité du
    cœur fonctionnel.

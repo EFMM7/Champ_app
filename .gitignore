@@ -1,0 +1,21 @@
+# Environnement / secrets
+.env
+.env.*
+!.env.example
+
+# Base de données locale
+output/*.db
+output/*.db-journal
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+.venv/
+venv/
+
+# Éditeurs / OS
+.vscode/
+.idea/
+.DS_Store

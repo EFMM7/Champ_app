@@ -25,11 +25,11 @@ def test_treatment_is_linked_to_its_field_analysis_and_hidden_from_others(monkey
 
         created = client.post(
             f"/fields/{field['id']}/treatments",
-            json={"analysis_id": analysis["id"], "zone_id": "zone-1", "note": "Irrigation vérifiée"},
+            json={"analysis_id": analysis["id"], "zone_id": analysis["result"]["zones"][0]["id"], "note": "Irrigation vérifiée"},
             headers=owner_headers,
         )
         assert created.status_code == 200
-        assert created.json()["zone_id"] == "zone-1"
+        assert created.json()["zone_id"] == analysis["result"]["zones"][0]["id"]
         assert created.json()["analysis_id"] == analysis["id"]
 
         history = client.get(f"/fields/{field['id']}/treatments", headers=owner_headers)

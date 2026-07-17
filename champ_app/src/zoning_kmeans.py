@@ -40,6 +40,12 @@ def segment_zones_kmeans(
     h, w = raster.shape
     valid_mask = ~np.isnan(raster)
 
+    if not valid_mask.any():
+        raise ValueError(
+            "Aucun pixel valide dans le raster (image entièrement masquée, ex: couverture "
+            "nuageuse totale) : impossible de calculer un zonage k-means."
+        )
+
     yy, xx = np.mgrid[0:h, 0:w]
     x_norm = xx[valid_mask] / w
     y_norm = yy[valid_mask] / h

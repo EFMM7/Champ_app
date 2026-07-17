@@ -248,6 +248,12 @@ def api_create_analysis(
         _raise_api_error(422, "validation_error", "method doit être 'grid' ou 'kmeans'.")
     if payload.n_rows < 1 or payload.n_cols < 1 or payload.n_zones < 1 or payload.resolution < 1:
         _raise_api_error(422, "validation_error", "Les dimensions de zonage doivent être des entiers positifs.")
+    if payload.n_rows > 50 or payload.n_cols > 50:
+        _raise_api_error(422, "validation_error", "n_rows et n_cols ne peuvent pas dépasser 50.")
+    if payload.n_zones > 20:
+        _raise_api_error(422, "validation_error", "n_zones ne peut pas dépasser 20.")
+    if payload.resolution > 100:
+        _raise_api_error(422, "validation_error", "resolution ne peut pas dépasser 100.")
 
     thresholds = {
         "critical": payload.critical_threshold,
@@ -268,14 +274,21 @@ def api_create_analysis(
             _raise_api_error(503, "sentinel_configuration_error", str(exc))
         except Exception as exc:
             _raise_api_error(502, "sentinel_request_error", f"Impossible de récupérer les données Sentinel : {exc}")
-    result, _ = run_pipeline(
-        bands,
-        n_rows=payload.n_rows,
-        n_cols=payload.n_cols,
-        method=payload.method,
-        n_zones=payload.n_zones,
-        thresholds=thresholds,
-    )
+    try:
+        result, _ = run_pipeline(
+            bands,
+            n_rows=payload.n_rows,
+            n_cols=payload.n_cols,
+            method=payload.method,
+            n_zones=payload.n_zones,
+            thresholds=thresholds,
+        )
+    except Exception as exc:
+        _raise_api_error(
+            422,
+            "analysis_error",
+            f"Impossible de calculer l'analyse (image probablement inexploitable, ex: entièrement masquée) : {exc}",
+        )
     result["field_id"] = field_id
     return save_analysis(
         get_db_path(),
@@ -338,6 +351,10 @@ def api_field_zones(
         _raise_api_error(422, "validation_error", "n_rows et n_cols doivent être des entiers positifs.")
     if n_zones < 1:
         _raise_api_error(422, "validation_error", "n_zones doit être un entier positif.")
+    if n_rows > 50 or n_cols > 50:
+        _raise_api_error(422, "validation_error", "n_rows et n_cols ne peuvent pas dépasser 50.")
+    if n_zones > 20:
+        _raise_api_error(422, "validation_error", "n_zones ne peut pas dépasser 20.")
 
     thresholds = None
     if critical_threshold is not None or warning_threshold is not None:
@@ -349,14 +366,17 @@ def api_field_zones(
     # Mode démo : pas d'accès réseau à Sentinel Hub dans cet environnement.
     # En production, remplacer par : fetch_sentinel.fetch_field_bands(bbox_du_champ)
     bands = generate_synthetic_bands(seed=field_id)
-    result, _ = run_pipeline(
-        bands,
-        n_rows=n_rows,
-        n_cols=n_cols,
-        method=method,
-        n_zones=n_zones,
-        thresholds=thresholds,
-    )
+    try:
+        result, _ = run_pipeline(
+            bands,
+            n_rows=n_rows,
+            n_cols=n_cols,
+            method=method,
+            n_zones=n_zones,
+            thresholds=thresholds,
+        )
+    except Exception as exc:
+        _raise_api_error(422, "analysis_error", f"Impossible de calculer l'analyse : {exc}")
     result["field_id"] = field_id
     result["field_name"] = field["name"]
     return result

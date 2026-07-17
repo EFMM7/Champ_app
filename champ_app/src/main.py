@@ -81,7 +81,11 @@ def run_pipeline(
         "zones": merged,
         "alert_count": len(alerts),
         "alert_zone_ids": [z["id"] for z in alerts],
-        "field_mean_ndvi": round(float(np.nanmean(indices_rasters["ndvi"])), 3),
+        "field_mean_ndvi": (
+            None
+            if np.all(np.isnan(indices_rasters["ndvi"]))
+            else round(float(np.nanmean(indices_rasters["ndvi"])), 3)
+        ),
         "label_grid": label_grid if method == "kmeans" else None,
     }, indices_rasters
 

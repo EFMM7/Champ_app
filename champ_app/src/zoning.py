@@ -18,9 +18,22 @@ def get_thresholds(overrides: dict | None = None) -> dict:
     return thresholds
 
 
+def _row_letters(row: int) -> str:
+    """Convertit un index de ligne en lettres façon colonnes Excel : 0->A, 25->Z, 26->AA, ..."""
+    letters = ""
+    n = row
+    while True:
+        n, remainder = divmod(n, 26)
+        letters = chr(65 + remainder) + letters
+        if n == 0:
+            break
+        n -= 1
+    return letters
+
+
 def zone_id(row: int, col: int) -> str:
-    """Convertit (ligne, colonne) en identifiant type 'A1', 'B4'..."""
-    return f"{chr(65 + row)}{col + 1}"
+    """Convertit (ligne, colonne) en identifiant type 'A1', 'B4', 'AA1'..."""
+    return f"{_row_letters(row)}{col + 1}"
 
 
 def split_into_zones(raster: np.ndarray, n_rows: int, n_cols: int) -> list[dict]:

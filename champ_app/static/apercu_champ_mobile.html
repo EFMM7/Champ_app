@@ -470,9 +470,7 @@ async function refreshAnalysis(){
   try{
     const res = await fetch(`${API_BASE}/fields/${FIELD_ID}/analyses`, {
       method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + TOKEN }
-        , 'Content-Type': 'application/json'
-      },
+      headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
       body: JSON.stringify({ source: 'synthetic', method: 'kmeans', n_zones: 6 })
     });
     if(!res.ok) throw new Error('API a répondu ' + res.status);

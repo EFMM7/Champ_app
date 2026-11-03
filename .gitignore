@@ -4,8 +4,9 @@
 !.env.example
 
 # Base de données locale
-output/*.db
-output/*.db-journal
+# (le **/ est nécessaire : le projet vit dans champ_app/, pas à la racine du dépôt)
+**/output/*.db
+**/output/*.db-journal
 
 # Python
 __pycache__/

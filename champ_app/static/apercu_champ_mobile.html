@@ -59,6 +59,17 @@
     border-bottom:1px solid var(--line);
   }
   .offline-banner.show{ display:block; }
+  .demo-banner{
+    display:none;
+    background: rgba(217,164,65,0.14);
+    color: var(--stress);
+    font-size:11px;
+    line-height:1.4;
+    text-align:center;
+    padding:8px 14px;
+    border-bottom:1px solid var(--stress);
+  }
+  .demo-banner.show{ display:block; }
 
   .topbar{
     padding:16px 18px 12px 18px;
@@ -288,6 +299,11 @@
     </div>
   </div>
 
+  <div class="demo-banner show" id="demo-banner" role="status">
+    Données simulées : cette carte ne reflète pas l'état réel de votre parcelle.
+    Ne l'utilisez pas pour décider d'un traitement.
+  </div>
+
   <!-- POSITION TAB -->
   <div class="screen" id="screen-position">
     <div class="gps-card">
@@ -398,6 +414,14 @@ let currentCell = null;
 let currentAnalysisId = null;
 let isBlobMap = false;
 let dataSource = 'demo';
+let analysisDate = null;   // date de l'analyse affichée (JJ/MM/AAAA), null en mode démo local
+
+function formatAnalysisDate(value){
+  // created_at vient de SQLite : "YYYY-MM-DD HH:MM:SS" (UTC)
+  if(!value) return null;
+  const d = new Date(String(value).replace(' ', 'T') + 'Z');
+  return isNaN(d) ? null : d.toLocaleDateString('fr-FR');
+}
 
 function useAnalysis(analysis){
   const data = analysis.result;
@@ -406,6 +430,7 @@ function useAnalysis(analysis){
   zones = data.zones;
   isBlobMap = true;
   dataSource = analysis.source;
+  analysisDate = formatAnalysisDate(analysis.created_at);
   const cr = Math.floor(labelGrid.rows/2), cc = Math.floor(labelGrid.cols/2);
   const idx = labelGrid.data[cr][cc];
   currentCell = idx >= 0 ? zones[idx] : zones.find(z => z.ndvi != null);
@@ -416,6 +441,7 @@ function useDemoData(){
   cells = generateSyntheticCells();
   isBlobMap = false;
   dataSource = 'demo';
+  analysisDate = null;
   currentAnalysisId = null;
   currentCell = cells.find(c => c.x===3 && c.y===3) || cells[0];
 }
@@ -424,8 +450,12 @@ function updateSourceBadge(){
   const badge = document.getElementById('source-badge');
   if(!badge) return;
   const isSentinel = dataSource === 'sentinel';
-  badge.textContent = isSentinel ? 'DONNÉES SENTINEL' : dataSource === 'synthetic' ? 'ANALYSE DE DÉMO' : 'MODE DÉMO';
-  badge.className = 'source-badge ' + (dataSource === 'demo' ? 'demo' : 'live');
+  const label = isSentinel ? 'DONNÉES SENTINEL' : dataSource === 'synthetic' ? 'ANALYSE DE DÉMO' : 'MODE DÉMO';
+  badge.textContent = analysisDate ? label + ' · ' + analysisDate : label;
+  // seules des données satellite réelles reçoivent le style "live" (vert)
+  badge.className = 'source-badge ' + (isSentinel ? 'live' : 'demo');
+  const banner = document.getElementById('demo-banner');
+  if(banner) banner.classList.toggle('show', !isSentinel);
 }
 
 async function loadFieldData(){

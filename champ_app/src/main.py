@@ -2,8 +2,8 @@
 Pipeline complet : bandes satellite -> indices -> zonage -> export JSON + carte PNG.
 
 Usage :
-    python src/main.py --demo                # données synthétiques (aucune clé requise)
-    python src/main.py --bbox <lon,lat,lon,lat>  # vraies données (nécessite SH_CLIENT_ID/SECRET)
+    python -m src.main --demo                # données synthétiques (aucune clé requise)
+    python -m src.main --bbox <lon,lat,lon,lat>  # vraies données (nécessite SH_CLIENT_ID/SECRET)
 
 Le mode --demo permet de valider toute la logique de traitement sans
 dépendre d'une connexion à Sentinel Hub.

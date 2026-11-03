@@ -60,6 +60,14 @@ generate_icons.py      → régénère les icônes de static/ si besoin
 pip install -r requirements.txt
 ```
 
+Configuration locale minimale :
+
+```bash
+cp .env.example .env    # contient ENV=development (secret JWT de dev autorisé)
+```
+
+Lancer les tests : `python -m pytest tests`
+
 ## Utilisation
 
 ⚠️ **Toutes les commandes ci-dessous s'exécutent depuis la racine du projet
@@ -231,9 +239,12 @@ majeure tant que le cœur métier n'est pas pleinement stabilisé.
 - Les réponses d'erreur sont désormais structurées et cohérentes : chaque
   erreur renvoie un objet avec `error`, `detail` et `message`, ce qui facilite
   une intégration côté client et un traitement homogène des validations.
-- ⚠️ `JWT_SECRET_KEY` a une valeur par défaut **uniquement pour le
-  développement local** — à définir via la variable d'environnement
-  `JWT_SECRET_KEY` avant tout déploiement réel.
+- ⚠️ `JWT_SECRET_KEY` est **obligatoire**. Un secret de développement public
+  n'est utilisé que si `ENV=development` (ou `dev`/`local`/`test`) est défini
+  explicitement ; sinon l'API refuse de démarrer. Pour le développement local,
+  copiez `.env.example` en `.env`. En production, ne définissez pas
+  `ENV=development` et fournissez un vrai secret
+  (`python -c "import secrets; print(secrets.token_urlsafe(48))"`).
 - Le CORS est désormais limité par défaut à des origines locales sûres
   (`localhost` / `127.0.0.1` sur les ports 3000 et 8000), avec possibilité
   de surcharger la liste via `CORS_ALLOWED_ORIGINS`.

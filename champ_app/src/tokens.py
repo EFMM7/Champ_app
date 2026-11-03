@@ -1,9 +1,11 @@
 """
 Émission et vérification de tokens JWT pour les sessions API.
 
-⚠️ SECRET_KEY : ici lue depuis une variable d'environnement avec une valeur
-par défaut UNIQUEMENT pour le développement local. En production, elle doit
-être définie via une vraie variable d'environnement secrète, jamais commitée.
+Le secret de signature est lu dans la variable d'environnement JWT_SECRET_KEY.
+Si elle est absente, le code échoue (RuntimeError), SAUF si ENV est
+explicitement défini à "development" (ou dev/local/test) : un secret de
+développement public est alors utilisé. Oublier de définir ENV en production
+ne peut donc plus conduire à signer des tokens avec un secret connu de tous.
 """
 
 import os
@@ -15,7 +17,8 @@ from src.config import load_environment
 
 load_environment()
 
-SECRET_KEY = os.environ.get("JWT_SECRET_KEY")
+DEV_ENVIRONMENTS = {"dev", "development", "local", "test"}
+DEV_ONLY_SECRET = "dev-only-secret-do-not-use-in-production"
 ALGORITHM = "HS256"
 TOKEN_EXPIRY_HOURS = 24 * 7  # 7 jours
 
@@ -24,13 +27,20 @@ def is_production_environment() -> bool:
     return os.environ.get("ENV", "development").strip().lower() in {"prod", "production", "true"}
 
 
+def is_development_environment() -> bool:
+    return os.environ.get("ENV", "").strip().lower() in DEV_ENVIRONMENTS
+
+
 def get_secret_key() -> str:
     secret_key = os.environ.get("JWT_SECRET_KEY")
     if secret_key:
         return secret_key
-    if is_production_environment():
-        raise RuntimeError("JWT_SECRET_KEY doit être défini en production.")
-    return "dev-only-secret-do-not-use-in-production"
+    if is_development_environment():
+        return DEV_ONLY_SECRET
+    raise RuntimeError(
+        "JWT_SECRET_KEY doit être défini. Pour le développement local uniquement, "
+        "définissez ENV=development (voir .env.example)."
+    )
 
 
 class TokenError(Exception):

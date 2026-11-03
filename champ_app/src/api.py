@@ -82,8 +82,8 @@ async def _handle_rate_limit_exceeded(request: Request, exc: RateLimitExceeded) 
 async def lifespan(app: FastAPI):
     db_path = get_db_path()
     db_path.parent.mkdir(exist_ok=True)
-    if is_production_environment():
-        tokens_module.get_secret_key()
+    # échoue dès le démarrage si JWT_SECRET_KEY est absent hors ENV=development
+    tokens_module.get_secret_key()
     init_db(db_path)
     yield
 

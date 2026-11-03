@@ -13,3 +13,10 @@ def _disable_rate_limiting_by_default():
     yield
     api.limiter.enabled = False
     api.limiter.reset()
+
+@pytest.fixture(autouse=True)
+def _explicit_development_environment(monkeypatch):
+    """Le secret JWT de développement n'est accepté que si ENV=development est
+    défini explicitement. Les tests qui vérifient un autre comportement
+    (production, absence de ENV) surchargent cette valeur."""
+    monkeypatch.setenv("ENV", "development")

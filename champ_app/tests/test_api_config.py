@@ -7,7 +7,7 @@ from src import api
 def test_health_endpoint_reports_service_status(monkeypatch, tmp_path):
     db_path = tmp_path / "app.db"
     monkeypatch.setattr(api, "DB_PATH", db_path)
-    monkeypatch.delenv("ENV", raising=False)
+    monkeypatch.setenv("ENV", "development")
     monkeypatch.delenv("JWT_SECRET_KEY", raising=False)
 
     with TestClient(api.app) as client:
@@ -24,6 +24,18 @@ def test_startup_fails_when_production_secret_is_missing(monkeypatch, tmp_path):
     db_path = tmp_path / "app.db"
     monkeypatch.setattr(api, "DB_PATH", db_path)
     monkeypatch.setenv("ENV", "production")
+    monkeypatch.delenv("JWT_SECRET_KEY", raising=False)
+
+    with pytest.raises(RuntimeError, match="JWT_SECRET_KEY"):
+        with TestClient(api.app):
+            pass
+
+
+def test_startup_fails_when_env_is_unset_and_secret_is_missing(monkeypatch, tmp_path):
+    """Régression : oublier ENV ne doit plus activer le secret de développement."""
+    db_path = tmp_path / "app.db"
+    monkeypatch.setattr(api, "DB_PATH", db_path)
+    monkeypatch.delenv("ENV", raising=False)
     monkeypatch.delenv("JWT_SECRET_KEY", raising=False)
 
     with pytest.raises(RuntimeError, match="JWT_SECRET_KEY"):

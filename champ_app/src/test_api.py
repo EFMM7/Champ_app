@@ -1,6 +1,10 @@
 """Teste l'API avec de vraies requêtes HTTP, y compris l'authentification par token JWT."""
 
+import os
 from pathlib import Path
+
+os.environ.setdefault("ENV", "development")  # secret de dev accepté uniquement en mode explicite
+
 from fastapi.testclient import TestClient
 
 DB_PATH = Path(__file__).resolve().parent.parent / "output" / "app.db"

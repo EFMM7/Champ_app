@@ -8,7 +8,9 @@
 // le navigateur propose "Installer l'application" — sur iOS/Safari, ce n'est
 // pas requis pour "Sur l'écran d'accueil" mais ne gêne pas non plus.
 
-const CACHE_NAME = 'champ-app-shell-v1';
+// Incrémenter ce numéro à chaque changement de la coquille pour que les
+// appareils déjà installés abandonnent l'ancien cache (cf. 'activate').
+const CACHE_NAME = 'champ-app-shell-v2';
 const SHELL_FILES = [
   '/onboarding_mobile.html',
   '/apercu_champ_mobile.html',
@@ -38,7 +40,28 @@ self.addEventListener('fetch', (event) => {
 
   // ne jamais mettre en cache les appels API (/auth, /fields, /crops) —
   // uniquement la coquille visuelle statique
-  if (SHELL_FILES.includes(url.pathname)) {
+  if (event.request.method !== 'GET' || !SHELL_FILES.includes(url.pathname)) {
+    return;
+  }
+
+  const isPage = url.pathname.endsWith('.html') || url.pathname.endsWith('.json');
+
+  if (isPage) {
+    // Réseau d'abord : une nouvelle version du HTML/manifest est servie dès
+    // qu'on est en ligne ; le cache ne sert que de secours hors-ligne.
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          }
+          return response;
+        })
+        .catch(() => caches.match(event.request))
+    );
+  } else {
+    // Icônes : cache d'abord (elles changent très rarement).
     event.respondWith(
       caches.match(event.request).then((cached) => cached || fetch(event.request))
     );

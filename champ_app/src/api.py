@@ -2,7 +2,7 @@
 API FastAPI exposant les fonctions déjà testées (auth.py, fields.py, main.py).
 
 Lancer en local :
-    uvicorn api:app --reload --port 8000
+    uvicorn src.api:app --reload --port 8000   (depuis la racine du projet champ_app/)
 
 Documentation interactive générée automatiquement : http://localhost:8000/docs
 """
@@ -19,7 +19,7 @@ from fastapi import FastAPI, HTTPException, Depends, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, Field, field_validator
 from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
@@ -82,8 +82,8 @@ async def _handle_rate_limit_exceeded(request: Request, exc: RateLimitExceeded) 
 async def lifespan(app: FastAPI):
     db_path = get_db_path()
     db_path.parent.mkdir(exist_ok=True)
-    if is_production_environment():
-        tokens_module.get_secret_key()
+    # échoue dès le démarrage si JWT_SECRET_KEY est absent hors ENV=development
+    tokens_module.get_secret_key()
     init_db(db_path)
     yield
 
@@ -205,11 +205,6 @@ class FieldResponse(BaseModel):
     sowing_date: str | None
     area_ha: float
     polygon: list[tuple[float, float]] | None = None
-
-
-class ErrorResponse(BaseModel):
-    error: str
-    detail: str
 
 
 class AnalysisRequest(BaseModel):
@@ -493,6 +488,9 @@ def api_field_zones(
         _raise_api_error(422, "analysis_error", f"Impossible de calculer l'analyse : {exc}")
     result["field_id"] = field_id
     result["field_name"] = field["name"]
+    # ces données sont simulées : on le dit explicitement pour que l'interface
+    # ne les présente jamais comme une mesure réelle de la parcelle
+    result["source"] = "synthetic"
     return result
 
 
